@@ -1,6 +1,30 @@
-poetry.lock
-DECISIONS.md
-**/__pycache__/
-**/.pytest_cache/
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment files
 .env
-.env.example
+.env.*
+
+# Poetry
+poetry.lock
+
+# Alembic
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Markdown files
+DECISIONS.md
