@@ -1,2 +1,6 @@
 poetry.lock
 DECISIONS.md
+**/__pycache__/
+**/.pytest_cache/
+.env
+.env.example
