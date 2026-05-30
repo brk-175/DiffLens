@@ -53,7 +53,7 @@ async def google_callback(
 
     user = db.query(User).filter(User.google_sub == google_sub).first()
     if not user:
-        user = User(google_sub=google_sub, email=email, full_name=name)
+        user = User(google_sub=google_sub, email=email, full_name=name, tenant_id=1)
         db.add(user)
         db.commit()
         db.refresh(user)
