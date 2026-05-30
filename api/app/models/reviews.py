@@ -10,6 +10,7 @@ class Review(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     tenant_id: Mapped[int | None] = mapped_column(ForeignKey("tenants.id"))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    guest_token: Mapped[str | None] = mapped_column(String(64), unique=True)
 
     status: Mapped[str] = mapped_column(String(32), default="queued")
     diff_content: Mapped[str] = mapped_column(Text, nullable=False)

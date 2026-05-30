@@ -20,14 +20,22 @@ class Settings(BaseSettings):
     # Auth
     JWT_SECRET: str = ""
     JWT_ALGORITHM: str = ""
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
 
     # Google OIDC
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
-
+    GOOGLE_AUTH_URL: str = ""
+    GOOGLE_TOKEN_URL: str = ""
+    GOOGLE_USERINFO_URL: str = ""
+    FRONTEND_BASE_URL: str = ""
+    
     # AI Provider
     AI_PROVIDER: str = ""
     ANTHROPIC_API_KEY: str = ""
+
+    # CORS
+    CORS_ALLOW_ORIGINS: list[str] = []
 
 settings = Settings()
