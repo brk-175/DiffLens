@@ -20,9 +20,12 @@ class ReviewMode(str, Enum):
 class ReviewCreateRequest(BaseModel):
     diff_content: str = Field(..., min_length=1)
     modes: list[ReviewMode] = Field(default_factory=list)
+    source_type: str = Field(default="pasted")  # "pasted" or "uploaded"
+    file_name: str | None = None
 
 
 class ReviewCreateResponse(BaseModel):
     review_id: int
     guest_token: str
     status: ReviewStatus
+    input_blob_path: str

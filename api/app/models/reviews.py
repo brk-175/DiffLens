@@ -2,7 +2,8 @@ from sqlalchemy import ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 from app.models.mixins import TimestampMixin
-
+from app.core.config import settings
+from typing import Literal
 
 class Review(TimestampMixin, Base):
     __tablename__ = "reviews"
@@ -13,8 +14,6 @@ class Review(TimestampMixin, Base):
     guest_token: Mapped[str | None] = mapped_column(String(64), unique=True)
 
     status: Mapped[str] = mapped_column(String(32), default="queued")
-    diff_content: Mapped[str] = mapped_column(Text, nullable=False)
-
     mode_flags: Mapped[dict] = mapped_column(JSON, default=dict)
 
     overall_verdict: Mapped[str | None] = mapped_column(String(32))
@@ -23,9 +22,22 @@ class Review(TimestampMixin, Base):
 
     final_summary_key_takeaways: Mapped[list | None] = mapped_column(JSON)
     final_summary_recommended_next_steps: Mapped[list | None] = mapped_column(JSON)
-
-    result_json: Mapped[dict | None] = mapped_column(JSON)
     error_message: Mapped[str | None] = mapped_column(Text)
+
+    storage_provider: Mapped[str] = mapped_column(String(32), default="minio")
+    storage_bucket: Mapped[str] = mapped_column(String(255), nullable=False, default=settings.MINIO_BUCKET)
+
+    input_blob_path: Mapped[str | None] = mapped_column(Text)
+    input_blob_size: Mapped[int | None] = mapped_column(Integer)
+    input_blob_hash: Mapped[str | None] = mapped_column(String(128))
+
+    output_blob_path: Mapped[str | None] = mapped_column(Text)
+    output_blob_size: Mapped[int | None] = mapped_column(Integer)
+    output_blob_hash: Mapped[str | None] = mapped_column(String(128))
+
+    file_count: Mapped[int | None] = mapped_column(Integer)
+    issue_count: Mapped[int | None] = mapped_column(Integer)
+    severity_counts: Mapped[dict | None] = mapped_column(JSON)
 
     tenant = relationship("Tenant", back_populates="reviews")
     created_by_user = relationship("User", back_populates="reviews")
@@ -40,6 +52,7 @@ class ReviewFile(TimestampMixin, Base):
 
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_summary: Mapped[str | None] = mapped_column(Text)
+    source_type: Mapped[Literal["pasted", "uploaded"]] = mapped_column(String(16), default="pasted")
 
     review = relationship("Review", back_populates="files")
     issues = relationship("ReviewIssue", back_populates="review_file", cascade="all, delete-orphan")
@@ -58,7 +71,7 @@ class ReviewIssue(TimestampMixin, Base):
     line_end: Mapped[int | None] = mapped_column(Integer)
 
     comment: Mapped[str] = mapped_column(Text, nullable=False)
-    suggested_fix: Mapped[str | None] = mapped_column(Text)
+    suggested_fix_blob_path: Mapped[str | None] = mapped_column(Text)
 
     review_file = relationship("ReviewFile", back_populates="issues")
     details = relationship(
@@ -78,6 +91,6 @@ class ReviewIssueDetails(TimestampMixin, Base):
     what_is_wrong: Mapped[str | None] = mapped_column(Text)
     why_it_matters: Mapped[str | None] = mapped_column(Text)
     how_to_fix: Mapped[str | None] = mapped_column(Text)
-    code_example: Mapped[str | None] = mapped_column(Text)
-
+    code_example_blob_path: Mapped[str | None] = mapped_column(Text)
+    
     issue = relationship("ReviewIssue", back_populates="details")
