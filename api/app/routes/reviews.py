@@ -50,7 +50,7 @@ def create_review(payload: ReviewCreateRequest, db: Session = Depends(get_db)):
 
     review_file = ReviewFile(
         review_id=review.id,
-        file_path=file_display_name,
+        file_name=file_display_name,
         source_type=payload.source_type,
     )
     db.add(review_file)
