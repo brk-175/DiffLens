@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     CORS_ALLOW_ORIGINS: list[str] = []
 
     # MinIO
+    STORAGE_PROVIDER: str = ""
     MINIO_ENDPOINT: str = ""
     MINIO_ACCESS_KEY: str = ""
     MINIO_SECRET_KEY: str = ""

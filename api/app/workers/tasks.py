@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
-from app.models.reviews import Review
+from app.models.reviews import Review, ReviewStatus
 
 
 def process_review(review_id: int) -> None:
@@ -9,11 +9,11 @@ def process_review(review_id: int) -> None:
         review = db.query(Review).get(review_id)
         if not review:
             return
-        review.status = "processing"
+        review.status = ReviewStatus.processing.value
         db.commit()
 
         # TODO: fetch diff from MinIO, call AI, store output
-        review.status = "complete"
+        review.status = ReviewStatus.complete.value
         db.commit()
     finally:
         db.close()

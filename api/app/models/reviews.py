@@ -5,6 +5,7 @@ from app.models.mixins import TimestampMixin
 from app.core.config import settings
 from typing import Literal
 
+
 class Review(TimestampMixin, Base):
     __tablename__ = "reviews"
 
@@ -24,7 +25,7 @@ class Review(TimestampMixin, Base):
     final_summary_recommended_next_steps: Mapped[list | None] = mapped_column(JSON)
     error_message: Mapped[str | None] = mapped_column(Text)
 
-    storage_provider: Mapped[str] = mapped_column(String(32), default="minio")
+    storage_provider: Mapped[str] = mapped_column(String(32), default=settings.STORAGE_PROVIDER)
     storage_bucket: Mapped[str] = mapped_column(String(255), nullable=False, default=settings.MINIO_BUCKET)
 
     input_blob_path: Mapped[str | None] = mapped_column(Text)
