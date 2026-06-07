@@ -26,6 +26,29 @@ services:
     volumes:
       - difflens_minio_data:/data
 
+  redis:
+    image: redis:7
+    container_name: difflens-redis
+    ports:
+      - "6379:6379"
+
+  worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile.worker
+    container_name: difflens-worker
+    environment:
+      REDIS_URL: ${REDIS_URL}
+    depends_on:
+      - postgres
+      - minio
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - ../api:/app
+    restart: on-failure
+
 volumes:
   db_data:
   difflens_minio_data:

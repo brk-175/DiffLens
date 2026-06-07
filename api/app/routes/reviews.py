@@ -7,11 +7,14 @@ from app.schemas.reviews import ReviewCreateRequest, ReviewCreateResponse, Revie
 import hashlib
 from app.services.storage import StorageService
 from app.core.config import settings
+from app.workers.queue import get_reviews_queue
+from app.workers.tasks import process_review
+from rq import Queue
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
 @router.post("", response_model=ReviewCreateResponse)
-def create_review(payload: ReviewCreateRequest, db: Session = Depends(get_db)):
+def create_review(payload: ReviewCreateRequest, db: Session = Depends(get_db), reviews_queue: Queue = Depends(get_reviews_queue)):
     if len(payload.diff_content) > 2_000_000:
         raise HTTPException(status_code=413, detail="Diff too large")
 
@@ -56,6 +59,9 @@ def create_review(payload: ReviewCreateRequest, db: Session = Depends(get_db)):
     db.add(review_file)
     db.commit()
     db.refresh(review)
+
+    # Enqueue background job to process the posted review
+    reviews_queue.enqueue(process_review, review.id)
 
     return ReviewCreateResponse(
         review_id=review.id,
