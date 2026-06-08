@@ -51,7 +51,7 @@ class ReviewFile(TimestampMixin, Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     review_id: Mapped[int] = mapped_column(ForeignKey("reviews.id"))
 
-    file_name: Mapped[str] = mapped_column(Text, nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_summary: Mapped[str | None] = mapped_column(Text)
     source_type: Mapped[Literal["pasted", "uploaded"]] = mapped_column(String(16), default="pasted")
 
