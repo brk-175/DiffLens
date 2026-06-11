@@ -45,7 +45,7 @@ def create_review(payload: ReviewCreateRequest, db: Session = Depends(get_db), r
     input_path = f"reviews/{review.id}/input/{file_display_name}"
     blob_path, blob_size, blob_hash = storage.upload_text(input_path, payload.diff_content)
 
-    db.query(Review).get(review.id).update({ 
+    db.query(Review).filter(Review.id == review.id).update({ 
         Review.input_blob_path: blob_path, 
         Review.input_blob_size: blob_size, 
         Review.input_blob_hash: blob_hash 

@@ -33,8 +33,9 @@ class Settings(BaseSettings):
     
     # AI Provider
     AI_PROVIDER: str = ""
-    ANTHROPIC_API_KEY: str = ""
-
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = ""
+    
     # CORS
     CORS_ALLOW_ORIGINS: list[str] = []
 
