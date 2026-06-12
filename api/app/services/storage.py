@@ -51,4 +51,12 @@ class StorageService:
 
     def download_text(self, object_path: str) -> str:
         response = self.get_object(object_path)
+        if response is None:
+            return ""
         return response.decode("utf-8")
+
+    def download_json(self, object_path: str) -> dict | None:
+        response = self.get_object(object_path)
+        if response is None:
+            return {}
+        return json.loads(response.decode("utf-8"))

@@ -9,6 +9,7 @@ from app.models.reviews import Review
 from app.schemas.auth import AuthTokenResponse, LinkGuestReviewsRequest, LinkGuestReviewsResponse
 from app.services.google_oidc import build_google_auth_url, exchange_code_for_tokens, fetch_userinfo
 from app.services.jwt import create_access_token
+from app.services.auth import link_guest_reviews
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -58,30 +59,13 @@ async def google_callback(
         db.commit()
         db.refresh(user)
 
-    # Optional guest review linking
+    # Link guest reviews if tokens provided
     if guest_tokens:
-        token_list = [t.strip() for t in guest_tokens.split(",") if t.strip()]
-        if token_list:
-            (
-                db.query(Review)
-                .filter(Review.guest_token.in_(token_list), Review.created_by.is_(None))
-                .update({Review.created_by: user.id}, synchronize_session=False)
-            )
-            db.commit()
+        link_payload = LinkGuestReviewsRequest(guest_tokens=guest_tokens)
+        link_result = link_guest_reviews(link_payload, user)
+        if link_result.linked_count == 0:
+            raise HTTPException(status_code=200, detail="No valid guest tokens provided or reviews already linked")
 
     jwt_token = create_access_token(str(user.id))
     response.delete_cookie("oidc_state")
     return AuthTokenResponse(access_token=jwt_token)
-
-
-@router.post("/link-guest-reviews", response_model=LinkGuestReviewsResponse)
-def link_guest_reviews(
-    payload: LinkGuestReviewsRequest,
-    db: Session = Depends(get_db),
-):
-    if not payload.guest_tokens:
-        return LinkGuestReviewsResponse(linked_count=0)
-
-    # NOTE: Replace with actual current user once JWT auth is in place.
-    # For now, just raise.
-    raise HTTPException(status_code=501, detail="Auth not wired yet")
