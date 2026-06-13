@@ -40,5 +40,5 @@ def get_current_user(
 ) -> User:
     """Strict auth dependency."""
     if current_user is None:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="Authentication required! Login first.")
     return current_user

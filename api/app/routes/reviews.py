@@ -28,9 +28,9 @@ def _assert_review_access(
 
     # User-owned review: logged-in owner required
     if current_user is None:
-        raise HTTPException(status_code=401, detail="Authentication required")
+        raise HTTPException(status_code=401, detail="Authentication required!")
     if review.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise HTTPException(status_code=403, detail="Access denied!")
 
 
 @router.post("", response_model=ReviewCreateResponse)
@@ -115,7 +115,7 @@ def get_review_result(
         raise HTTPException(status_code=404, detail="Output blob path missing")
 
     storage = StorageService()
-    payload = storage.get_json(review.output_blob_path)
+    payload = storage.download_json(review.output_blob_path)
     if payload is None:
         raise HTTPException(status_code=404, detail="Review result not found in storage")
 
@@ -145,11 +145,11 @@ def get_issue_details(
 
     suggested_fix = None
     if issue.suggested_fix_blob_path:
-        suggested_fix = storage.get_text(issue.suggested_fix_blob_path)
+        suggested_fix = storage.download_text(issue.suggested_fix_blob_path)
 
     code_example = None
     if details and details.code_example_blob_path:
-        code_example = storage.get_text(details.code_example_blob_path)
+        code_example = storage.download_text(details.code_example_blob_path)
 
     return {
         "issue_id": issue.id,
