@@ -2,14 +2,20 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from app.core.deps import get_db
-from app.core.config import settings
+from app.core.deps import get_current_user, get_db
 from app.models.users import User
-from app.models.reviews import Review
-from app.schemas.auth import AuthTokenResponse, LinkGuestReviewsRequest, LinkGuestReviewsResponse
-from app.services.google_oidc import build_google_auth_url, exchange_code_for_tokens, fetch_userinfo
+from app.schemas.auth import (
+    AuthTokenResponse,
+    LinkGuestReviewsRequest,
+    LinkGuestReviewsResponse,
+)
+from app.services.auth import link_guest_reviews_to_user
+from app.services.google_oidc import (
+    build_google_auth_url,
+    exchange_code_for_tokens,
+    fetch_userinfo,
+)
 from app.services.jwt import create_access_token
-from app.services.auth import link_guest_reviews
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -38,10 +44,11 @@ async def google_callback(
     db: Session = Depends(get_db),
     guest_tokens: str | None = Query(None),
 ):
+    # CSRF state check
     cookie_state = request.cookies.get("oidc_state")
     if not cookie_state or cookie_state != state:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
-    
+
     tokens = await exchange_code_for_tokens(code)
     userinfo = await fetch_userinfo(tokens["access_token"])
 
@@ -54,18 +61,43 @@ async def google_callback(
 
     user = db.query(User).filter(User.google_sub == google_sub).first()
     if not user:
-        user = User(google_sub=google_sub, email=email, full_name=name, tenant_id=1)
+        user = User(
+            google_sub=google_sub,
+            email=email,
+            full_name=name,
+            tenant_id=1,  # TODO: replace with real tenant strategy
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
+    else:
+        # keep profile reasonably fresh
+        if email and user.email != email:
+            user.email = email
+        if name and user.full_name != name:
+            user.full_name = name
+        db.commit()
 
-    # Link guest reviews if tokens provided
+    # Optional guest review linking from callback query
     if guest_tokens:
-        link_payload = LinkGuestReviewsRequest(guest_tokens=guest_tokens)
-        link_result = link_guest_reviews(link_payload, user)
-        if link_result.linked_count == 0:
-            raise HTTPException(status_code=200, detail="No valid guest tokens provided or reviews already linked")
+        token_list = [t.strip() for t in guest_tokens.split(",")]
+        link_guest_reviews_to_user(db=db, user=user, guest_tokens=token_list)
 
     jwt_token = create_access_token(str(user.id))
     response.delete_cookie("oidc_state")
-    return AuthTokenResponse(access_token=jwt_token)
+
+    return AuthTokenResponse(access_token=jwt_token, token_type="Bearer")
+
+
+@router.post("/link-guest-reviews", response_model=LinkGuestReviewsResponse)
+def link_guest_reviews(
+    payload: LinkGuestReviewsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    linked_count = link_guest_reviews_to_user(
+        db=db,
+        user=current_user,
+        guest_tokens=payload.guest_tokens,
+    )
+    return LinkGuestReviewsResponse(linked_count=linked_count)
