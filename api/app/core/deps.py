@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.models.users import User
 from app.services.jwt import decode_access_token
 from jose import JWTError
+from fastapi import Depends, HTTPException
 
 
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/google/callback", auto_error=False)
