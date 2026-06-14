@@ -6,6 +6,7 @@ from app.services.ai import review_diff
 from app.schemas.ai import DiffLensReviewOutput
 from app.schemas.reviews import ReviewStatus
 from typing import Any
+from app.services.review_events import publish_review_event
 
 
 def _download_input_diff(storage: StorageService, object_path: str) -> str:
@@ -60,6 +61,7 @@ def process_review(review_id: int) -> None:
         if not review:
             return ValueError(f"Review not found with ID: {review_id}")
 
+        publish_review_event(review_id, {"type": "status", "status": ReviewStatus.processing.value})
         review.status = ReviewStatus.processing.value
         review.error_message = None
         db.commit()
@@ -167,6 +169,7 @@ def process_review(review_id: int) -> None:
                 )
                 db.add(details)
 
+        publish_review_event(review_id, {"type": "status", "status": ReviewStatus.complete.value})
         review.status = ReviewStatus.complete.value
         db.commit()
     
@@ -174,6 +177,7 @@ def process_review(review_id: int) -> None:
         db.rollback()
         review = db.get(Review, review_id)
         if review:
+            publish_review_event(review_id, {"type": "status", "status": ReviewStatus.failed.value, "error": str(ex)})
             review.status = ReviewStatus.failed.value
             review.error_message = str(ex)[:5000]
             print(f"Error processing review ID {review_id}: {ex}")

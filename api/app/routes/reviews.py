@@ -1,5 +1,7 @@
 import hashlib
 import secrets
+import asyncio
+import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from rq import Queue
 from sqlalchemy.orm import Session
@@ -11,6 +13,8 @@ from app.schemas.reviews import ReviewCreateRequest, ReviewCreateResponse, Revie
 from app.services.storage import StorageService
 from app.workers.queue import get_reviews_queue
 from app.workers.tasks import process_review
+from fastapi.responses import StreamingResponse
+from app.services.review_events import subscribe_review_events
 
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -164,4 +168,78 @@ def get_issue_details(
             "code_example": code_example,
         },
         "suggested_fix": suggested_fix,
+    }
+
+
+@router.get("/{review_id}/stream")
+async def stream_review_events(
+    review_id: int,
+    guest_token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+):
+    review = db.get(Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    _assert_review_access(review, guest_token, current_user)
+
+    async def event_generator():
+        # initial event so UI has immediate state
+        initial = {"type": "status", "status": review.status}
+        yield f"data: {json.dumps(initial)}\n\n"
+
+        # if already terminal, end stream quickly
+        if review.status in {"complete", "failed"}:
+            return
+
+        async for pubsub in subscribe_review_events(review_id):
+            while True:
+                msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=15.0)
+                if msg and msg.get("type") == "message":
+                    payload = msg["data"]
+                    yield f"data: {payload}\n\n"
+
+                    # stop stream on terminal statuses
+                    try:
+                        parsed = json.loads(payload)
+                        if parsed.get("status") in {"complete", "failed"}:
+                            return
+                    except Exception:
+                        pass
+
+                # keep-alive ping
+                yield ": keep-alive\n\n"
+                await asyncio.sleep(5)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+@router.get("/{review_id}")
+def get_review_status(
+    review_id: int,
+    guest_token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
+):
+    review = db.get(Review, review_id)
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    _assert_review_access(review, guest_token, current_user)
+
+    return {
+        "review_id": review.id,
+        "status": review.status,
+        "overall_verdict": review.overall_verdict,
+        "risk_level": review.risk_level,
+        "short_summary": review.short_summary,
+        "error_message": review.error_message,
     }
