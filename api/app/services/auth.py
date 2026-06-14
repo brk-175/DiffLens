@@ -1,8 +1,11 @@
+import logging
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.reviews import Review
 from app.models.users import User
 
+
+logger = logging.getLogger(__name__)
 
 def link_guest_reviews_to_user(
     db: Session,
@@ -13,6 +16,7 @@ def link_guest_reviews_to_user(
     Link unowned guest reviews to the logged-in user.
     Returns number of linked reviews.
     """
+    logger.info(f"link_guest_reviews start user_id={user.id} token_count={len(guest_tokens or [])}")
     if not guest_tokens:
         return 0
 
@@ -33,6 +37,7 @@ def link_guest_reviews_to_user(
         )
         .all()
     )
+    logger.info(f"link_guest_reviews matched user_id={user.id} matched_count={len(reviews)}")
 
     for review in reviews:
         review.created_by = user.id
@@ -40,4 +45,5 @@ def link_guest_reviews_to_user(
             review.tenant_id = user.tenant_id
 
     db.commit()
+    logger.info(f"link_guest_reviews complete user_id={user.id} linked_count={len(reviews)}")
     return len(reviews)

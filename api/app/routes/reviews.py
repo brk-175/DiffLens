@@ -2,6 +2,7 @@ import hashlib
 import secrets
 import asyncio
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from rq import Queue
 from sqlalchemy.orm import Session
@@ -18,6 +19,7 @@ from app.services.review_events import subscribe_review_events
 
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
+logger = logging.getLogger(__name__)
 
 def _assert_review_access(
     review: Review,
@@ -32,8 +34,10 @@ def _assert_review_access(
 
     # User-owned review: logged-in owner required
     if current_user is None:
+        logger.warning(f"review access denied review_id={review.id} created_by={review.created_by} has_guest_token={bool(guest_token)}")
         raise HTTPException(status_code=401, detail="Authentication required!")
     if review.created_by != current_user.id:
+        logger.warning(f"review access denied review_id={review.id} created_by={review.created_by} has_guest_token={bool(guest_token)}")
         raise HTTPException(status_code=403, detail="Access denied!")
 
 
@@ -43,6 +47,7 @@ def create_review(
     db: Session = Depends(get_db),
     reviews_queue: Queue = Depends(get_reviews_queue),
 ):
+    logger.info(f"create_review request received source_type={payload.source_type} modes={[m.value if hasattr(m,'value') else str(m) for m in payload.modes]}")
     if len(payload.diff_content) > 2_000_000:
         raise HTTPException(status_code=413, detail="Diff too large")
 
@@ -69,6 +74,7 @@ def create_review(
     )
     db.add(review)
     db.flush()
+    logger.info(f"review created review_id={review.id} status={review.status}")
 
     # Upload diff to MinIO
     storage = StorageService()
@@ -78,6 +84,7 @@ def create_review(
     review.input_blob_path = blob_path
     review.input_blob_size = blob_size
     review.input_blob_hash = blob_hash
+    logger.info(f"input uploaded review_id={review.id} path={blob_path} size={blob_size}")
 
     review_file = ReviewFile(
         review_id=review.id,
@@ -90,6 +97,7 @@ def create_review(
 
     # Enqueue background job
     reviews_queue.enqueue(process_review, review.id)
+    logger.info(f"review enqueued review_id={review.id} queue=reviews")
 
     return ReviewCreateResponse(
         review_id=review.id,
@@ -113,6 +121,7 @@ def get_review_result(
     _assert_review_access(review, guest_token, current_user)
 
     if review.status != ReviewStatus.complete.value:
+        logger.info(f"result requested before ready; review_id={review.id} status={review.status}")
         raise HTTPException(status_code=409, detail=f"Review not ready. Current status: {review.status}")
 
     if not review.output_blob_path:
@@ -123,6 +132,7 @@ def get_review_result(
     if payload is None:
         raise HTTPException(status_code=404, detail="Review result not found in storage")
 
+    logger.info(f"result served review_id={review.id}")
     return payload
 
 

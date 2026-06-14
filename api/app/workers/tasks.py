@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.reviews import Review, ReviewFile, ReviewIssue, ReviewIssueDetails
@@ -8,6 +9,8 @@ from app.schemas.reviews import ReviewStatus
 from typing import Any
 from app.services.review_events import publish_review_event
 
+
+logger = logging.getLogger(__name__)
 
 def _download_input_diff(storage: StorageService, object_path: str) -> str:
     """
@@ -57,9 +60,13 @@ def process_review(review_id: int) -> None:
     storage = StorageService()
 
     try:
+        logger.info(f"worker started review_id={review_id}")
+        
         review = db.get(Review, review_id)
         if not review:
+            logger.error(f"Review not found with ID: {review_id}")
             return ValueError(f"Review not found with ID: {review_id}")
+        logger.info(f"worker loaded review review_id={review_id} status={review.status}")
 
         publish_review_event(review_id, {"type": "status", "status": ReviewStatus.processing.value})
         review.status = ReviewStatus.processing.value
@@ -74,12 +81,14 @@ def process_review(review_id: int) -> None:
         selected_modes = _extract_selected_modes(review.mode_flags)
 
         # 2) Call AI Service to review the diff and generate output
+        logger.info(f"ai review started review_id={review_id}")
         ai_raw = review_diff(diff_text=diff_text, selected_modes=selected_modes)
 
         # 3) Validate strict schema
         validated = DiffLensReviewOutput.model_validate(ai_raw)
         if not validated:
             raise ValueError(f"AI output validation failed for review with ID: {review_id}")
+        logger.info(f"ai review validated review_id={review_id} files={len(validated.files)}")
 
         # 4) Store full output JSON in MinIO
         output_path = f"reviews/{review.id}/output/result.json"
@@ -88,6 +97,7 @@ def process_review(review_id: int) -> None:
         review.output_blob_path = out_path
         review.output_blob_size = out_size
         review.output_blob_hash = out_hash
+        logger.info(f"output uploaded review_id={review_id} output_path={out_path} size={out_size}")
 
         # Store result file in review_files table
         ReviewFile (
@@ -171,7 +181,9 @@ def process_review(review_id: int) -> None:
 
         publish_review_event(review_id, {"type": "status", "status": ReviewStatus.complete.value})
         review.status = ReviewStatus.complete.value
+        logger.info(f"worker persisting complete review_id={review_id}")
         db.commit()
+        logger.info(f"worker success review_id={review_id} status=complete")
     
     except Exception as ex:
         db.rollback()
@@ -180,7 +192,7 @@ def process_review(review_id: int) -> None:
             publish_review_event(review_id, {"type": "status", "status": ReviewStatus.failed.value, "error": str(ex)})
             review.status = ReviewStatus.failed.value
             review.error_message = str(ex)[:5000]
-            print(f"Error processing review ID {review_id}: {ex}")
+            logger.exception(f"worker failed review_id={review_id} error={ex}")
             db.commit()
 
     finally:

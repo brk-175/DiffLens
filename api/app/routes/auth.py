@@ -1,4 +1,5 @@
 import secrets
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -19,9 +20,11 @@ from app.services.jwt import create_access_token
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 @router.get("/google/login")
 def google_login():
+    logger.info("google login initiated")
     state = secrets.token_urlsafe(16)
     url = build_google_auth_url(state)
     response = RedirectResponse(url)
@@ -48,6 +51,7 @@ async def google_callback(
     cookie_state = request.cookies.get("oidc_state")
     if not cookie_state or cookie_state != state:
         raise HTTPException(status_code=400, detail="Invalid OAuth state")
+    logger.info("google callback state validated")
 
     tokens = await exchange_code_for_tokens(code)
     userinfo = await fetch_userinfo(tokens["access_token"])
@@ -77,15 +81,18 @@ async def google_callback(
         if name and user.full_name != name:
             user.full_name = name
         db.commit()
+    logger.info(f"google user resolved user_id={user.id} email={user.email}")
 
     # Optional guest review linking from callback query
     if guest_tokens:
         token_list = [t.strip() for t in guest_tokens.split(",")]
-        link_guest_reviews_to_user(db=db, user=user, guest_tokens=token_list)
+        linked_count = link_guest_reviews_to_user(db=db, user=user, guest_tokens=token_list)
+        logger.info(f"guest reviews linked user_id={user.id} linked_count={linked_count}")
 
     jwt_token = create_access_token(str(user.id))
     response.delete_cookie("oidc_state")
-
+    
+    logger.info(f"auth token issued user_id={user.id}")
     return AuthTokenResponse(access_token=jwt_token, token_type="Bearer")
 
 

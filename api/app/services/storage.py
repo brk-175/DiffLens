@@ -1,9 +1,12 @@
 import hashlib
 import json
-from botocore.client import Config
 import boto3
+import logging
+from botocore.client import Config
 from app.core.config import settings
 
+
+logger = logging.getLogger(__name__)
 
 class StorageService:
     def __init__(self) -> None:
@@ -33,12 +36,16 @@ class StorageService:
             ContentType=content_type,
         )
         checksum = hashlib.sha256(data).hexdigest()
+        logger.info(f"object stored bucket={settings.MINIO_BUCKET} key={key} size={len(data)} content_type={content_type}")
         return key, len(data), checksum
 
     def get_object(self, key: str) -> bytes | None:
         obj = self.client.get_object(Bucket=settings.MINIO_BUCKET, Key=key)
         try:
             return obj["Body"].read()
+        except Exception as ex:
+            logger.error(f"Error reading object from storage bucket={settings.MINIO_BUCKET} key={key}: {ex}")
+            return None
         finally:
             obj["Body"].close()
 
