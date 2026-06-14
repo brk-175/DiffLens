@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 class ReviewStatus(str, Enum):
@@ -29,3 +30,28 @@ class ReviewCreateResponse(BaseModel):
     guest_token: str
     status: ReviewStatus
     input_blob_path: str
+
+
+class ReviewStatusResponse(BaseModel):
+    review_id: int
+    status: ReviewStatus
+    overall_verdict: str | None = None
+    risk_level: str | None = None
+    short_summary: str | None = None
+    error_message: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+
+class ReviewListItem(BaseModel):
+    review_id: int
+    status: ReviewStatus
+    overall_verdict: str | None = None
+    risk_level: str | None = None
+    short_summary: str | None = None
+    created_at: datetime | None = None
+
+
+class ReviewListResponse(BaseModel):
+    items: list[ReviewListItem]
+    total: int

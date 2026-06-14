@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from rq import Queue
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.core.deps import get_db, get_optional_current_user
+from app.core.deps import get_db, get_optional_current_user, get_current_user
 from app.models.reviews import Review, ReviewFile, ReviewIssue
 from app.models.users import User
-from app.schemas.reviews import ReviewCreateRequest, ReviewCreateResponse, ReviewStatus
+from app.schemas.reviews import ReviewCreateRequest, ReviewCreateResponse, ReviewStatus, ReviewStatusResponse, ReviewListItem, ReviewListResponse
 from app.services.storage import StorageService
 from app.workers.queue import get_reviews_queue
 from app.workers.tasks import process_review
@@ -222,7 +222,7 @@ async def stream_review_events(
     )
 
 
-@router.get("/{review_id}")
+@router.get("/{review_id}", response_model=ReviewStatusResponse)
 def get_review_status(
     review_id: int,
     guest_token: str | None = Query(default=None),
@@ -235,11 +235,44 @@ def get_review_status(
 
     _assert_review_access(review, guest_token, current_user)
 
-    return {
-        "review_id": review.id,
-        "status": review.status,
-        "overall_verdict": review.overall_verdict,
-        "risk_level": review.risk_level,
-        "short_summary": review.short_summary,
-        "error_message": review.error_message,
-    }
+    return ReviewStatusResponse(
+        review_id=review.id,
+        status=ReviewStatus(review.status),
+        overall_verdict=review.overall_verdict,
+        risk_level=review.risk_level,
+        short_summary=review.short_summary,
+        error_message=review.error_message,
+        created_at=review.created_at,
+        updated_at=review.updated_at,
+    )
+
+
+@router.get("", response_model=ReviewListResponse)
+def list_my_reviews(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    q = (
+        db.query(Review)
+        .filter(Review.created_by == current_user.id)
+        .order_by(Review.created_at.desc())
+    )
+
+    total = q.count()
+    rows = q.offset(offset).limit(limit).all()
+
+    items = [
+        ReviewListItem(
+            review_id=r.id,
+            status=ReviewStatus(r.status),
+            overall_verdict=r.overall_verdict,
+            risk_level=r.risk_level,
+            short_summary=r.short_summary,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+    return ReviewListResponse(items=items, total=total)
