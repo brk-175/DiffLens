@@ -219,26 +219,23 @@ export default function HomePage() {
         className="fixed top-0 w-full z-20 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500"
       >
         <div className="flex items-center gap-12">
-          <span className="text-2xl font-bold tracking-tighter text-[#bbcb2e]">DiffLens</span>
+          <span className="text-2xl font-bold tracking-tighter text-[#bbcb2e] cursor-default">DiffLens</span>
           <div className="hidden md:flex gap-6">
             <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-              Platform
+              Review History
             </a>
             <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-              Engine
-            </a>
-            <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-              Docs
+              Documentation
             </a>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <a className="text-sm font-medium hidden sm:block" href="#">
-            Log in
+          <a className="text-sm font-medium hidden sm:block px-3 py-2 rounded-md transition-all duration-200 hover:bg-white/10 hover:text-[#C9D532]" href="#">
+            Sign In
           </a>
-          <button className="px-4 py-2 bg-white text-black font-semibold text-sm rounded hover:bg-[#bbcb2e] transition-all active:scale-95 btn-glow-hover">
-            Get Started
+          <button className="px-4 py-2 bg-white text-black font-semibold text-sm rounded hover:bg-[#bbcb2e] transition-all active:scale-95 btn-glow-hover cursor-pointer">
+            Start Reviewing
           </button>
         </div>
       </nav>
@@ -249,7 +246,7 @@ export default function HomePage() {
             <div className="inline-flex items-center gap-2 px-3 py-1 mb-6 glass-panel rounded-full text-[11px] border-white/5 reveal">
               <span className="w-2 h-2 rounded-full bg-[#bbcb2e] animate-pulse"></span>
               <span className="uppercase tracking-widest text-[#bbcb2e]/80 font-[500]">
-                Analysis Engine v2.4
+                AI PRE-PR REVIEW ENGINE
               </span>
             </div>
 
@@ -257,16 +254,17 @@ export default function HomePage() {
               className="text-5xl md:text-8xl tracking-tight leading-[1.05] mb-6 reveal"
               style={{ transitionDelay: "0.1s" }}
             >
-              Expert-level code reviews. <br />
-              <span className="text-[#bbcb2e] italic">Zero friction.</span>
+              <span className="text-[#bbcb2e]">Instant pre-PR</span>
+              <br /> 
+              <span>code reviews</span> 
+              <br />
             </h1>
 
             <p
-              className="max-w-2xl mx-auto text-lg md:text-xl text-white/60 mb-12 reveal"
+              className="max-w-3xl mx-auto text-lg md:text-xl text-white/60 mb-12 reveal"
               style={{ transitionDelay: "0.2s" }}
             >
-              DiffLens integrates directly into your workflow to catch architectural flaws, security leaks,
-              and technical debt before the first PR comment.
+              DiffLens analyzes code diffs before pull requests, uncovering bugs, security risks, performance issues, and maintainability concerns in seconds.
             </p>
           </div>
 
@@ -322,22 +320,18 @@ export default function HomePage() {
         <section className="py-12 relative px-6 max-w-6xl mx-auto">
           <div className="mb-12 text-center md:text-left">
             <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 reveal">
-              Our process is your <br />
-              <span className="text-[#bbcb2e]">competitive edge.</span>
+              <span className="text-[#bbcb2e]"> Review smarter. </span> Ship faster.
             </h2>
           </div>
 
           <div className="relative grid grid-cols-1 md:grid-cols-3 gap-12 pt-12">
-            <div className="hidden md:block step-line"></div>
-
             <div className="flex flex-col gap-4 reveal" style={{ transitionDelay: "0.1s" }}>
               <div className="w-12 h-12 rounded-full bg-[#bbcb2e] text-black flex items-center justify-center font-bold text-lg mb-2 z-10 border-4 border-black">
                 1
               </div>
-              <h3 className="text-2xl font-semibold">Upload</h3>
+              <h3 className="text-2xl font-semibold">Upload / Paste</h3>
               <p className="text-white/60 leading-relaxed">
-                Push your code. Whether it&apos;s a local commit or a staged branch, DiffLens picks it up
-                instantly via CLI or webhook.
+                Paste or upload a git diff / patch file. DiffLens begins AI analysis and uncovers bugs, risks, and code quality issues instantly.
               </p>
             </div>
 
@@ -345,10 +339,9 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-full bg-[#bbcb2e] text-black flex items-center justify-center font-bold text-lg mb-2 z-10 border-4 border-black">
                 2
               </div>
-              <h3 className="text-2xl font-semibold">Analyze</h3>
+              <h3 className="text-2xl font-semibold">AI Review</h3>
               <p className="text-white/60 leading-relaxed">
-                Our proprietary engine runs millions of simulations to find edge cases, race conditions,
-                and architectural missteps.
+                AI scans your changes for bugs, security vulnerabilities, performance regressions, code smells, and maintainability issues.
               </p>
             </div>
 
@@ -356,10 +349,9 @@ export default function HomePage() {
               <div className="w-12 h-12 rounded-full bg-[#bbcb2e] text-black flex items-center justify-center font-bold text-lg mb-2 z-10 border-4 border-black">
                 3
               </div>
-              <h3 className="text-2xl font-semibold">Resolve</h3>
+              <h3 className="text-2xl font-semibold">Fix & Merge</h3>
               <p className="text-white/60 leading-relaxed">
-                Receive a surgical diff with suggested fixes. One click to apply, zero back-and-forth with
-                reviewers.
+                Review prioritized findings, apply suggested fixes, and get your PR reviewed with greater confidence.
               </p>
             </div>
           </div>
@@ -374,21 +366,20 @@ export default function HomePage() {
                   understanding.
                 </h2>
                 <p className="text-white/50 text-lg mb-6 reveal">
-                  We don&apos;t just find syntax errors; we find logic leaks. Our engine understands the
-                  context of your entire repository, not just the changed files.
+                  DiffLens understands how your changes affect the surrounding codebase, surfacing issues that span files, modules, and execution paths before they reach production.
                 </p>
                 <ul className="space-y-4">
                   <li className="flex items-center gap-2 reveal">
                     <span className="material-symbols-outlined text-[#bbcb2e] text-xl">check_circle</span>
-                    <span>Cross-file dependency tracking</span>
+                    <span>Security vulnerability detection</span>
                   </li>
                   <li className="flex items-center gap-2 reveal">
                     <span className="material-symbols-outlined text-[#bbcb2e] text-xl">check_circle</span>
-                    <span>Data-flow security analysis</span>
+                    <span>Cross-file impact analysis</span>
                   </li>
                   <li className="flex items-center gap-2 reveal">
                     <span className="material-symbols-outlined text-[#bbcb2e] text-xl">check_circle</span>
-                    <span>Performance bottleneck detection</span>
+                    <span>Performance regression detection</span>
                   </li>
                 </ul>
               </div>
@@ -461,7 +452,7 @@ export default function HomePage() {
                     </p>
                     <div className="flex gap-2">
                       <button className="flex-1 py-1.5 bg-[#bbcb2e] text-black text-[11px] font-bold rounded hover:scale-105 transition-transform">
-                        Apply Fix
+                        Get Suggested Fix
                       </button>
                       <button className="flex-1 py-1.5 bg-white/10 text-white text-[11px] font-bold rounded hover:bg-white/20 transition-colors">
                         Ignore
@@ -474,7 +465,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="py-12 px-6">
+        {/* <section className="py-12 px-6">
           <div className="max-w-7xl mx-auto border-y border-white/5 py-12 grid grid-cols-2 md:grid-cols-4 gap-12">
             <div className="text-center reveal" style={{ transitionDelay: "0.1s" }}>
               <div
@@ -525,7 +516,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-        </section>
+        </section> */}
 
         <section className="py-12 px-6">
           <div className="max-w-5xl mx-auto glass-panel p-12 md:p-32 rounded-[2rem] text-center relative overflow-hidden reveal">
@@ -537,14 +528,11 @@ export default function HomePage() {
               </h2>
               <div className="flex flex-col md:flex-row items-center justify-center gap-4">
                 <button className="w-full md:w-auto px-12 py-4 bg-[#bbcb2e] text-black font-bold text-lg rounded shadow-xl shadow-[#bbcb2e]/20 btn-glow-hover">
-                  Start for free
-                </button>
-                <button className="w-full md:w-auto px-12 py-4 bg-transparent border border-white/20 text-white font-bold text-lg rounded btn-secondary-hover transition-all">
-                  Talk to Sales
+                  Start Reviewing
                 </button>
               </div>
               <p className="mt-6 text-white/40 text-sm font-medium">
-                Free forever for open source. 14-day trial for teams.
+                Paste / upload a diff / patch file. Get actionable insights in seconds.
               </p>
             </div>
           </div>
@@ -556,7 +544,7 @@ export default function HomePage() {
           <div className="flex flex-col items-center md:items-start gap-1">
             <span className="text-2xl font-bold tracking-tighter text-[#bbcb2e]">DiffLens</span>
             <span className="text-xs text-white/30 uppercase tracking-widest">
-              Engineering Excellence // 2024
+              Technical Excellence // 2026
             </span>
           </div>
 
