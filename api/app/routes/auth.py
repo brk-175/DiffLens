@@ -9,6 +9,10 @@ from app.schemas.auth import (
     AuthTokenResponse,
     LinkGuestReviewsRequest,
     LinkGuestReviewsResponse,
+    PasswordEmailCheckRequest,
+    PasswordEmailCheckResponse,
+    PasswordSignInRequest,
+    PasswordSignInResponse
 )
 from app.services.auth import link_guest_reviews_to_user
 from app.services.google_oidc import (
@@ -21,6 +25,9 @@ from app.services.jwt import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
 
 @router.get("/google/login")
 def google_login():
@@ -108,3 +115,83 @@ def link_guest_reviews(
         guest_tokens=payload.guest_tokens,
     )
     return LinkGuestReviewsResponse(linked_count=linked_count)
+
+
+@router.post("/password/check-email", response_model=PasswordEmailCheckResponse)
+def check_email_for_password_flow(
+    payload: PasswordEmailCheckRequest,
+    db: Session = Depends(get_db),
+):
+    email = _normalize_email(payload.email)
+    user = db.query(User).filter(User.email == email).first()
+
+    # existing user with password -> enter password
+    if user and user.password_hash:
+        return PasswordEmailCheckResponse(
+            email=email,
+            exists=True,
+            next_step="enter_password",
+        )
+
+    # existing user without password (likely Google-only) OR new user -> create password
+    return PasswordEmailCheckResponse(
+        email=email,
+        exists=bool(user),
+        next_step="create_password",
+    )
+
+
+@router.post("/password/signin", response_model=PasswordSignInResponse)
+def password_signin(
+    payload: PasswordSignInRequest,
+    db: Session = Depends(get_db),
+):
+    email = _normalize_email(payload.email)
+    password = payload.password
+
+    user = db.query(User).filter(User.email == email).first()
+
+    # New user -> create account with password
+    if not user:
+        user = User(
+            email=email,
+            password_hash=hash_password(password),
+            tenant_id=1,  # TODO: replace with real tenant strategy
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token(str(user.id))
+        logger.info(f"password signup success user_id={user.id} email={email}")
+        return PasswordSignInResponse(
+            access_token=token,
+            token_type="Bearer",
+            is_new_user=True,
+        )
+
+    # Existing user with no password (Google-only or legacy) -> set password now
+    if not user.password_hash:
+        user.password_hash = hash_password(password)
+        db.commit()
+
+        token = create_access_token(str(user.id))
+        logger.info(f"password set for existing user user_id={user.id} email={email}")
+        return PasswordSignInResponse(
+            access_token=token,
+            token_type="Bearer",
+            is_new_user=False,
+        )
+
+    # Existing user with password -> verify
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    token = create_access_token(str(user.id))
+    logger.info(f"password signin success user_id={user.id} email={email}")
+    return PasswordSignInResponse(
+        access_token=token,
+        token_type="Bearer",
+        is_new_user=False,
+    )
