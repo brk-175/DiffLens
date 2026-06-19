@@ -231,7 +231,7 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <a className="text-sm font-medium hidden sm:block px-3 py-2 rounded-md transition-all duration-200 hover:bg-white/10 hover:text-[#C9D532]" href="#">
+          <a className="text-sm font-medium hidden sm:block px-3 py-2 rounded-md transition-all duration-200 hover:bg-white/10 hover:text-[#C9D532]" href="/signin">
             Sign In
           </a>
           <button className="px-4 py-2 bg-white text-black font-semibold text-sm rounded hover:bg-[#bbcb2e] transition-all active:scale-95 btn-glow-hover cursor-pointer">

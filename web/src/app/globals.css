@@ -146,3 +146,17 @@ nav.scrolled {
   opacity: 1;
   display: block;
 }
+
+/* Chrome autofill hard override (global) */
+input.autofill-fix:-webkit-autofill,
+input.autofill-fix:-webkit-autofill:hover,
+input.autofill-fix:-webkit-autofill:focus,
+input.autofill-fix:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
+  box-shadow: 0 0 0 1000px #000 inset !important;
+  background-color: #000 !important;
+  border: none;
+  transition: background-color 99999s ease-out 0s, color 99999s ease-out 0s;
+}

@@ -21,6 +21,7 @@ from app.services.google_oidc import (
     fetch_userinfo,
 )
 from app.services.jwt import create_access_token
+from app.services.password import hash_password, verify_password
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
