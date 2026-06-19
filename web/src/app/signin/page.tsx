@@ -165,13 +165,14 @@ export default function SignInPage() {
         <div className="w-full max-w-[420px] flex flex-col gap-12">
           {/* Header */}
           <div className="flex flex-col items-center text-center gap-2">
-            <div className="w-12 h-12 bg-[#bbcb2e] flex items-center justify-center rounded-lg mb-4 animate-fade-in-up">
-              <span
-                className="material-symbols-outlined text-[#000000] text-[28px]"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                insights
-              </span>
+            <div className="w-12 h-12 bg-[#bbcb2e] flex items-center justify-center rounded-lg mb-4 animate-fade-in-up cursor-pointer">
+              <a href="/">
+                <span
+                  className="material-symbols-outlined text-[#000000] text-[28px]"
+                  style={{ fontVariationSettings: "'FILL' 1" }}>
+                  insights
+                </span>
+              </a>
             </div>
 
             <h1 className="text-[48px] leading-[56px] tracking-[-0.02em] font-bold text-[#ffffff] animate-fade-in-up delay-100">
@@ -179,7 +180,7 @@ export default function SignInPage() {
             </h1>
 
             {showDescription && (
-              <p className="text-[18px] leading-[28px] text-[#dddddd] max-w-[280px] animate-fade-in-up delay-100">
+              <p className="text-[16px] leading-[28px] text-[#a1a1a1] max-w-[280px] animate-fade-in-up delay-100">
                 Engineering excellence through precision code visualization.
               </p>
             )}
@@ -265,12 +266,6 @@ export default function SignInPage() {
 
           {/* Footer links */}
           <div className="flex flex-col items-center gap-4 animate-fade-in-up delay-300">
-            <p className="text-[12px] leading-[16px] tracking-[0.05em] text-[#dddddd]">
-              New to the environment?{" "}
-              <a className="text-[#ffffff] hover:underline underline-offset-4 font-semibold" href="#">
-                Create workspace
-              </a>
-            </p>
             <div className="flex gap-6 opacity-60 hover:opacity-100 transition-opacity duration-300">
               <a className="text-[12px] leading-[16px] tracking-[0.05em] text-[#dddddd] hover:text-[#ffffff]" href="#">
                 Docs
@@ -285,19 +280,6 @@ export default function SignInPage() {
           </div>
         </div>
       </main>
-
-      {/* Decorative code fragment */}
-      <div className="fixed bottom-8 left-8 hidden lg:block opacity-20 hover:opacity-100 transition-all duration-700 select-none cursor-default z-10 animate-fade-in-up delay-300">
-        <pre className="text-[12px] text-[#dddddd] space-y-1 font-mono">
-{`// Initialization sequence
-const lens = new DiffLens({
-  precision: 'ultra',
-  theme: 'obsidian'
-});
-
-await lens.authenticate();`}
-        </pre>
-      </div>
 
       <style jsx global>{`
         .signin-page {
