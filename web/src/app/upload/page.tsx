@@ -45,9 +45,8 @@ export default function UploadPage() {
   const [diffText, setDiffText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-
   const [mouse, setMouse] = useState({ x: -1000, y: -1000, active: false });
-
+  
   const activeFile = files.length > 0 ? files[0] : null;
   const hasInput = Boolean(activeFile || diffText.trim());
 
@@ -168,7 +167,7 @@ export default function UploadPage() {
           >
             Sign In
           </a>
-          <a className="bg-[#bbcb2e] text-black px-6 py-2 text-[12px] leading-[12px] tracking-[0.05em] rounded-lg hover:brightness-110 transition-all duration-200 active:scale-95" href="/upload">
+          <a className="bg-[#bbcb2e] text-black px-6 py-2 text-[12px] leading-[12px] tracking-[0.05em] rounded-lg hover:brightness-110 transition-all duration-200 active:scale-95" href="#">
             Get Started
           </a>
         </div>

@@ -107,7 +107,7 @@ export default function SignInPage() {
     }
 
     if (!password || password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError("Password must be at least 8 characters long.");
       return;
     }
 
@@ -129,9 +129,7 @@ export default function SignInPage() {
       }
 
       const data: SignInResponse = await res.json();
-
       localStorage.setItem("difflens_access_token", data.access_token);
-
       router.replace("/upload");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed.");
@@ -220,7 +218,7 @@ export default function SignInPage() {
                   <span className="material-symbols-outlined text-[#dddddd] mr-4 text-[20px]">mail</span>
                   <input
                     className="bg-transparent border-none outline-none text-[#ffffff] text-[14px] leading-[20px] w-full placeholder:text-[#dddddd]/50 font-mono autofill-fix"
-                    placeholder="dev@difflens.io"
+                    placeholder="dev@gmail.com"
                     type="email"
                     value={email}
                     onChange={(e) => onEmailChange(e.target.value)}
