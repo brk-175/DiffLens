@@ -2,6 +2,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+
 type AuthStep = "email" | "create_password" | "enter_password";
 
 type CheckEmailResponse = {
@@ -152,7 +153,7 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="signin-page bg-[#000000] text-[#ffffff] min-h-screen flex flex-col overflow-hidden relative">
+    <div className="signin-page bg-[#000000] text-[#ffffff] min-h-screen flex flex-col overflow-hidden relative pt-20">
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none z-0 tech-grid" />
       <div

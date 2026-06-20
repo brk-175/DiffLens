@@ -1,18 +1,29 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const onUploadPage = pathname === "/upload";
   const onSignInPage = pathname === "/signin";
 
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 20);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <nav
       id="navbar"
-      className="fixed top-0 w-full z-50 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500 bg-black/80 backdrop-blur-md"
+      className={`fixed top-0 w-full z-50 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500 border-b border-transparent bg-transparent ${
+        isScrolled ? "scrolled" : ""
+      }`}
     >
       <div className="flex items-center gap-12">
         <button

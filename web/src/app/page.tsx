@@ -8,7 +8,6 @@ export default function HomePage() {
 
   useEffect(() => {
     const canvas = document.getElementById("shader-canvas-ANIMATION_139") as HTMLCanvasElement | null;
-    const navbar = document.getElementById("navbar");
 
     let cleanupGL: (() => void) | null = null;
 
@@ -195,21 +194,9 @@ export default function HomePage() {
       observer.observe(el);
     });
 
-    const onScroll = () => {
-      if (!navbar) return;
-      if (window.scrollY > 20) {
-        navbar.classList.add("scrolled");
-      } else {
-        navbar.classList.remove("scrolled");
-      }
-    };
-
-    window.addEventListener("scroll", onScroll);
-
     return () => {
       cleanupGL?.();
       observer.disconnect();
-      window.removeEventListener("scroll", onScroll);
     };
   }, []);
 
