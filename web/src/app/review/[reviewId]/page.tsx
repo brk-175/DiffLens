@@ -63,6 +63,63 @@ const severityClass: Record<Severity, string> = {
   low: "text-[#1DCD9F] border-[#1DCD9F] bg-[#1DCD9F]/10",
 };
 
+type ToneStyle = {
+  border: string;
+  value: string;
+  bg: string;
+};
+
+const VERDICT_TONE: Record<string, ToneStyle> = {
+  pass: {
+    border: "border-[#1DCD9F]/70",
+    value: "text-[#1DCD9F]",
+    bg: "bg-[#1DCD9F]/8",
+  },
+  pass_with_notes: {
+    border: "border-[#60A5FA]/70",
+    value: "text-[#60A5FA]",
+    bg: "bg-[#60A5FA]/10",
+  },
+  needs_changes: {
+    border: "border-[#ff4d6d]/80",
+    value: "text-[#ff4d6d]",
+    bg: "bg-[#ff4d6d]/8",
+  },
+  pending: {
+    border: "border-[#91927c]/60",
+    value: "text-[#c8c8af]",
+    bg: "bg-[#ffffff]/[0.03]",
+  },
+};
+
+const RISK_TONE: Record<string, ToneStyle> = {
+  low: {
+    border: "border-[#1DCD9F]/70",
+    value: "text-[#1DCD9F]",
+    bg: "bg-[#1DCD9F]/8",
+  },
+  medium: {
+    border: "border-[#fbbf24]/70",
+    value: "text-[#fbbf24]",
+    bg: "bg-[#fbbf24]/10",
+  },
+  high: {
+    border: "border-[#fb923c]/75",
+    value: "text-[#fb923c]",
+    bg: "bg-[#fb923c]/10",
+  },
+  critical: {
+    border: "border-[#ff4d6d]/80",
+    value: "text-[#ff4d6d]",
+    bg: "bg-[#ff4d6d]/8",
+  },
+  pending: {
+    border: "border-[#91927c]/60",
+    value: "text-[#c8c8af]",
+    bg: "bg-[#ffffff]/[0.03]",
+  },
+};
+
 function buildViewerLines(file: ReviewFile | undefined): ViewerLine[] {
   if (!file) return [];
 
@@ -111,6 +168,20 @@ function buildViewerLines(file: ReviewFile | undefined): ViewerLine[] {
 function verdictDisplay(v: Verdict | null | undefined): string {
   if (!v) return "pending";
   return v;
+}
+
+function normalizeToken(value: string | null | undefined): string {
+  return (value || "pending").trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function verdictLabel(value: string | null | undefined): string {
+  const token = normalizeToken(value);
+  return token.replaceAll("_", " ");
+}
+
+function riskLabel(value: string | null | undefined): string {
+  const token = normalizeToken(value);
+  return token.replaceAll("_", " ");
 }
 
 export default function ReviewDashboardPage() {
@@ -327,29 +398,48 @@ export default function ReviewDashboardPage() {
   const verdict = resultData?.summary.overall_verdict || statusData?.overall_verdict;
   const riskLevel = resultData?.summary.risk_level || statusData?.risk_level || "pending";
   const hasDetailedSummary = Boolean(resultData?.files?.length || resultData?.final_summary?.key_takeaways?.length);
+  const verdictTone = VERDICT_TONE[normalizeToken(verdict)] ?? VERDICT_TONE.pending;
+  const riskTone = RISK_TONE[normalizeToken(riskLevel)] ?? RISK_TONE.pending;
 
   return (
-    <div className="bg-[#000000] text-[#e2e2e2] h-screen flex flex-col overflow-hidden relative pt-20">
+    <div className="bg-[#000000] text-[#e2e2e2] h-screen flex flex-col overflow-hidden relative pt-18">
       <canvas id="review-canvas-bg" className="absolute inset-0 w-full h-full -z-10 opacity-30 pointer-events-none" />
 
       <header className="border-b border-[#474835] bg-[#000000]/90 backdrop-blur-md px-6 py-5 flex flex-col gap-4 z-10">
         <div className="flex justify-between items-start gap-4">
           <div className="flex flex-col gap-2 max-w-4xl">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight">Analysis Report : PR - {reviewId}</h1>
+            <div className="inline-flex items-center gap-3 rounded-lg bg-[#0c1106]/90 px-3 py-2 shadow-[0_0_16px_rgba(187,203,46,0.08)]">
+              <span className="material-symbols-outlined text-[#bbcb2e]">monitoring</span>
+
+              <div className="flex items-center gap-2">
+                <span className="text-l md:text-xl font-semibold tracking-tight text-[#f2f4e8]">
+                  Analysis Report
+                </span>
+                <span className="text-[#7d8367]">:</span>
+                <span className="inline-flex items-center rounded-md border border-[#bbcb2e]/35 bg-[#bbcb2e]/10 px-2 py-0.5 text-m font-semibold text-[#d7e84a]">
+                  PR - {reviewId}
+                </span>
+              </div>
             </div>
-            <p className="text-[#c8c8af] text-sm leading-6">{headerSummary}</p>
           </div>
 
-          <div className="flex gap-3">
-            <div className="min-w-36 border border-[#ff4d6d] rounded p-2 bg-[#000000]">
-              <p className="text-[11px] tracking-widest uppercase text-[#c8c8af] mb-1">Overall Verdict</p>
-              <p className="text-[#ff4d6d] font-semibold">{verdictDisplay(verdict)}</p>
+          <div className="flex gap-2">
+            <div
+              className={`min-w-28 rounded-md px-2.5 py-1.5 ${verdictTone.border} ${verdictTone.bg}`}
+              title="Overall verdict"
+            >
+              <p className="text-[10px] tracking-[0.14em] uppercase text-[#c8c8af] mb-0.5">Overall Verdict</p>
+              <p className={`text-sm leading-tight font-semibold capitalize ${verdictTone.value}`}>
+                {verdictLabel(verdictDisplay(verdict))}
+              </p>
             </div>
 
-            <div className="min-w-36 border border-[#ff4d6d] rounded p-2 bg-[#000000]">
-              <p className="text-[11px] tracking-widest uppercase text-[#c8c8af] mb-1">Risk Level</p>
-              <p className="text-[#ff4d6d] font-semibold capitalize">{riskLevel}</p>
+            <div
+              className={`min-w-24 rounded-md px-2.5 py-1.5 ${riskTone.border} ${riskTone.bg}`}
+              title="Risk level"
+            >
+              <p className="text-[10px] tracking-[0.14em] uppercase text-[#c8c8af] mb-0.5">Risk Level</p>
+              <p className={`text-sm leading-tight font-semibold capitalize ${riskTone.value}`}>{riskLabel(riskLevel)}</p>
             </div>
           </div>
         </div>
@@ -358,15 +448,36 @@ export default function ReviewDashboardPage() {
           <button
             type="button"
             onClick={() => setIsSummaryExpanded((prev) => !prev)}
-            className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#bbcb2e]/8 transition-colors"
+            className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#bbcb2e]/8 transition-all duration-400"
             aria-expanded={isSummaryExpanded}
             aria-controls="diff-summary-panel"
           >
-            <div className="flex items-center gap-3 text-left">
-              <span className="material-symbols-outlined text-[#bbcb2e]">summarize</span>
-              <div>
-                <p className="text-xs uppercase tracking-widest text-[#c8c8af]">Diff Summary</p>
-                <p className="text-sm text-[#e2e2e2]">
+            <div
+              className="flex-1 flex items-center justify-start gap-3 text-left transition-all duration-500"
+            >
+              <span
+                className="material-symbols-outlined text-[#bbcb2e] transition-all duration-400 w-6"
+              >
+                summarize
+              </span>
+
+              <div className="transition-all duration-500 text-left">
+                <p
+                  className={`uppercase text-[#c8c8af] transition-all duration-500 ${
+                    isSummaryExpanded
+                      ? "text-[14px] tracking-[0.14em] translate-y-0.5 mt-[-6]"
+                      : "text-xs tracking-widest"
+                  }`}
+                >
+                  Diff Summary
+                </p>
+                <p
+                  className={`text-sm text-[#e2e2e2] transition-all duration-400 ${
+                    isSummaryExpanded
+                      ? "max-h-0 opacity-0 overflow-hidden pointer-events-none"
+                      : "max-h-8 opacity-100 truncate max-w-[72vw] md:max-w-[64vw]"
+                  }`}
+                >
                   {loading ? "Generating high-level summary..." : headerSummary}
                 </p>
               </div>
@@ -381,8 +492,15 @@ export default function ReviewDashboardPage() {
             </span>
           </button>
 
-          {isSummaryExpanded && (
-            <div id="diff-summary-panel" className="border-t border-[#474835] px-4 py-4 space-y-4 summary-expand">
+          <div
+            id="diff-summary-panel"
+            className={`px-4 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isSummaryExpanded
+                ? "max-h-135 opacity-100 translate-y-0 py-4 border-t border-[#474835]"
+                : "max-h-0 opacity-0 -translate-y-1 py-0 border-t border-transparent"
+            }`}
+          >
+            <div className="space-y-4">
               <div className="rounded border border-[#474835] bg-black/50 p-3">
                 <p className="text-[11px] uppercase tracking-widest text-[#c8c8af] mb-1">Overview</p>
                 <p className="text-sm leading-6 text-[#d8d8c6]">{headerSummary}</p>
@@ -436,7 +554,7 @@ export default function ReviewDashboardPage() {
                 <p className="text-xs text-[#8f9471]">No additional summary details available for this review yet.</p>
               )}
             </div>
-          )}
+          </div>
         </div>
       </header>
 
@@ -618,29 +736,6 @@ export default function ReviewDashboardPage() {
         </aside>
       </div>
 
-      <footer className="bg-[#0e0e0e]/95 backdrop-blur-md border-t border-[#474835] w-full px-4 py-3 flex justify-between items-center z-20 shrink-0 gap-6">
-        <div className="flex flex-col min-w-0">
-          <h4 className="font-semibold mb-1">Key Takeaways</h4>
-          <p className="text-sm text-[#c8c8af] truncate">
-            {resultData?.final_summary.key_takeaways.join(" • ") || "Analysis in progress. Please wait..."}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[#c8c8af] max-w-xl hidden xl:block">
-            {resultData?.final_summary.recommended_next_steps.join(" • ") ||
-              "Recommended: Address critical findings before proceeding."}
-          </span>
-          <button className="px-5 py-2 rounded border border-[#474835] bg-[#353535] text-[#e2e2e2] font-bold hover:bg-[#444444]">
-            Reject PR
-          </button>
-          <button className="px-5 py-2 rounded bg-[#bbcb2e] text-[#1a1e00] font-bold hover:bg-[#d7e84a] inline-flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg">done_all</span>
-            Apply All Safe Fixes
-          </button>
-        </div>
-      </footer>
-
       {(loading || error) && (
         <div className="absolute inset-0 bg-black/55 backdrop-blur-[1px] flex items-center justify-center z-30">
           <div className="rounded border border-[#474835] bg-[#111111] px-6 py-4 text-center max-w-lg">
@@ -703,10 +798,6 @@ export default function ReviewDashboardPage() {
         .animate-fade-scale {
           animation: fadeInScale 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        .summary-expand {
-          animation: summaryExpand 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-          transform-origin: top;
-        }
         @keyframes slideInLeft {
           from {
             opacity: 0;
@@ -743,16 +834,6 @@ export default function ReviewDashboardPage() {
           }
           100% {
             transform: translateY(100vh);
-          }
-        }
-        @keyframes summaryExpand {
-          from {
-            opacity: 0;
-            transform: translateY(-6px) scaleY(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scaleY(1);
           }
         }
       `}</style>
