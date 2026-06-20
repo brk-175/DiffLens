@@ -1,5 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type AuthStep = "email" | "create_password" | "enter_password";
 
@@ -18,6 +19,7 @@ type SignInResponse = {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function SignInPage() {
+  const router = useRouter();
   const apiBase = useMemo(
     () => (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/$/, ""),
     []
@@ -130,8 +132,7 @@ export default function SignInPage() {
 
       localStorage.setItem("difflens_access_token", data.access_token);
 
-      // You can change this route later if you want upload page first
-      window.location.href = "/upload";
+      router.replace("/upload");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed.");
     } finally {
@@ -166,7 +167,7 @@ export default function SignInPage() {
           {/* Header */}
           <div className="flex flex-col items-center text-center gap-2">
             <div className="w-12 h-12 bg-[#bbcb2e] flex items-center justify-center rounded-lg mb-4 animate-fade-in-up cursor-pointer">
-              <a href="/">
+              <a onClick={() => router.push("/")}>
                 <span
                   className="material-symbols-outlined text-[#000000] text-[28px]"
                   style={{ fontVariationSettings: "'FILL' 1" }}>
