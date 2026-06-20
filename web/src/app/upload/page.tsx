@@ -146,34 +146,7 @@ export default function UploadPage() {
         }}
       />
 
-      <header className="flex justify-between items-center w-full px-4 md:px-8 h-16 sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#bbcb2e]/30">
-        <div className="flex items-center gap-8">
-          <a className="text-[#bbcb2e] text-[20px] font-bold tracking-[-0.02em] cursor-pointer" onClick={() => router.push('/')}>
-            DiffLens
-          </a>
-          <nav className="hidden md:flex gap-6">
-            <a className="text-[12px] leading-[12px] tracking-[0.05em] text-[#dddddd]/70 hover:text-[#bbcb2e] transition-colors" href="#">
-              Review History
-            </a>
-            <a className="text-[12px] leading-[12px] tracking-[0.05em] text-[#dddddd]/70 hover:text-[#bbcb2e] transition-colors" href="#">
-              Documentation
-            </a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4">
-          <a
-            className="text-[12px] leading-[12px] tracking-[0.05em] text-[#dddddd]/70 hover:text-[#bbcb2e] transition-colors px-4 py-2 active:scale-95 hover:bg-white/10 hover:text-[#C9D532] cursor-pointer"
-            onClick={() => router.push("/signin")}
-          >
-            Sign In
-          </a>
-          <a className="bg-[#bbcb2e] text-black px-6 py-2 text-[12px] leading-[12px] tracking-[0.05em] rounded-lg hover:brightness-110 transition-all duration-200 active:scale-95" href="#">
-            Get Started
-          </a>
-        </div>
-      </header>
-
-      <main className="min-h-screen relative">
+      <main className="min-h-screen relative pt-20">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#bbcb2e]/10 blur-[120px] -z-10 rounded-full opacity-20" />
 
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 py-12 flex flex-col gap-12">

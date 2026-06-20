@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Noto_Sans } from "next/font/google";
+import Navbar from "./components/Navbar";
 
 const notoSans = Noto_Sans({
   subsets: ["latin"],
@@ -28,6 +29,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${notoSans.className} min-h-full flex flex-col`}>
+        <Navbar />
         {children}
       </body>
     </html>

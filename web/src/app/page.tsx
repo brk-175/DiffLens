@@ -1,10 +1,11 @@
 "use client";
-
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+
 export default function HomePage() {
   const router = useRouter();
+
   useEffect(() => {
     const canvas = document.getElementById("shader-canvas-ANIMATION_139") as HTMLCanvasElement | null;
     const navbar = document.getElementById("navbar");
@@ -215,32 +216,6 @@ export default function HomePage() {
   return (
     <>
       <canvas id="shader-canvas-ANIMATION_139" />
-
-      <nav
-        id="navbar"
-        className="fixed top-0 w-full z-20 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500"
-      >
-        <div className="flex items-center gap-12">
-          <span className="text-2xl font-bold tracking-tighter text-[#bbcb2e] cursor-default">DiffLens</span>
-          <div className="hidden md:flex gap-6">
-            <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-              Review History
-            </a>
-            <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-              Documentation
-            </a>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4">
-          <a className="text-sm font-medium hidden sm:block px-3 py-2 rounded-md transition-all duration-200 hover:bg-white/10 hover:text-[#C9D532]" href="/signin">
-            Sign In
-          </a>
-          <button className="px-4 py-2 bg-white text-black font-semibold text-sm rounded hover:bg-[#bbcb2e] transition-all active:scale-95 btn-glow-hover cursor-pointer" onClick={() => router.push("/upload")}>
-            Start Reviewing
-          </button>
-        </div>
-      </nav>
 
       <main className="relative z-10">
         <section className="relative min-h-screen flex flex-col items-center justify-center pt-24 pb-12 px-6 overflow-hidden">
@@ -529,7 +504,7 @@ export default function HomePage() {
                 <span className="text-[#bbcb2e] italic">technical debt?</span>
               </h2>
               <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-                <button className="w-full md:w-auto px-12 py-4 bg-[#bbcb2e] text-black font-bold text-lg rounded shadow-xl shadow-[#bbcb2e]/20 btn-glow-hover">
+                <button className="w-full md:w-auto px-12 py-4 bg-[#bbcb2e] text-black font-bold text-lg rounded shadow-xl shadow-[#bbcb2e]/20 btn-glow-hover cursor-pointer" onClick={() => router.push("/upload")}>
                   Start Reviewing
                 </button>
               </div>
