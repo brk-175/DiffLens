@@ -126,6 +126,7 @@ export default function ReviewDashboardPage() {
   const [resultData, setResultData] = useState<ReviewResult | null>(null);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [expandedIssueIndex, setExpandedIssueIndex] = useState<number | null>(0);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -325,6 +326,7 @@ export default function ReviewDashboardPage() {
 
   const verdict = resultData?.summary.overall_verdict || statusData?.overall_verdict;
   const riskLevel = resultData?.summary.risk_level || statusData?.risk_level || "pending";
+  const hasDetailedSummary = Boolean(resultData?.files?.length || resultData?.final_summary?.key_takeaways?.length);
 
   return (
     <div className="bg-[#000000] text-[#e2e2e2] h-screen flex flex-col overflow-hidden relative pt-20">
@@ -334,8 +336,7 @@ export default function ReviewDashboardPage() {
         <div className="flex justify-between items-start gap-4">
           <div className="flex flex-col gap-2 max-w-4xl">
             <div className="flex items-center gap-3">
-              <span className="text-[#bbcb2e] text-2xl font-bold tracking-tight">DiffLens</span>
-              <h1 className="text-2xl font-semibold tracking-tight">Analysis Report: PR-{reviewId}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Analysis Report : PR - {reviewId}</h1>
             </div>
             <p className="text-[#c8c8af] text-sm leading-6">{headerSummary}</p>
           </div>
@@ -351,6 +352,91 @@ export default function ReviewDashboardPage() {
               <p className="text-[#ff4d6d] font-semibold capitalize">{riskLevel}</p>
             </div>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-[#474835] bg-[#0b0f03]/70 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setIsSummaryExpanded((prev) => !prev)}
+            className="w-full px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#bbcb2e]/8 transition-colors"
+            aria-expanded={isSummaryExpanded}
+            aria-controls="diff-summary-panel"
+          >
+            <div className="flex items-center gap-3 text-left">
+              <span className="material-symbols-outlined text-[#bbcb2e]">summarize</span>
+              <div>
+                <p className="text-xs uppercase tracking-widest text-[#c8c8af]">Diff Summary</p>
+                <p className="text-sm text-[#e2e2e2]">
+                  {loading ? "Generating high-level summary..." : headerSummary}
+                </p>
+              </div>
+            </div>
+
+            <span
+              className={`material-symbols-outlined text-[#bbcb2e] transition-transform duration-300 ${
+                isSummaryExpanded ? "rotate-180" : "rotate-0"
+              }`}
+            >
+              expand_more
+            </span>
+          </button>
+
+          {isSummaryExpanded && (
+            <div id="diff-summary-panel" className="border-t border-[#474835] px-4 py-4 space-y-4 summary-expand">
+              <div className="rounded border border-[#474835] bg-black/50 p-3">
+                <p className="text-[11px] uppercase tracking-widest text-[#c8c8af] mb-1">Overview</p>
+                <p className="text-sm leading-6 text-[#d8d8c6]">{headerSummary}</p>
+              </div>
+
+              {resultData?.files?.length ? (
+                <div className="space-y-2">
+                  <p className="text-[11px] uppercase tracking-widest text-[#c8c8af]">File-level Summary</p>
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                    {resultData.files.map((file, idx) => (
+                      <button
+                        key={`${file.file_path}-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedFileIndex(idx);
+                          setExpandedIssueIndex(0);
+                        }}
+                        className="w-full text-left rounded border border-[#474835] bg-[#121212] hover:border-[#bbcb2e]/70 hover:bg-[#161a0b] transition-colors p-3"
+                      >
+                        <p className="font-mono text-xs text-[#bbcb2e] truncate">{file.file_path}</p>
+                        <p className="text-sm text-[#c8c8af] mt-1 leading-5">{file.file_summary || "No summary available."}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                !loading && (
+                  <div className="rounded border border-dashed border-[#474835] p-3 text-sm text-[#c8c8af]">
+                    Detailed file summary will appear once analysis completes.
+                  </div>
+                )
+              )}
+
+              {resultData?.final_summary?.key_takeaways?.length ? (
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-[#c8c8af] mb-2">Key Takeaways</p>
+                  <div className="flex flex-wrap gap-2">
+                    {resultData.final_summary.key_takeaways.map((item, idx) => (
+                      <span
+                        key={`${item}-${idx}`}
+                        className="inline-flex items-center rounded-full border border-[#bbcb2e]/40 bg-[#bbcb2e]/10 text-[#e7efb2] text-xs px-3 py-1"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              {!hasDetailedSummary && !loading && (
+                <p className="text-xs text-[#8f9471]">No additional summary details available for this review yet.</p>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
@@ -617,6 +703,10 @@ export default function ReviewDashboardPage() {
         .animate-fade-scale {
           animation: fadeInScale 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
+        .summary-expand {
+          animation: summaryExpand 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+          transform-origin: top;
+        }
         @keyframes slideInLeft {
           from {
             opacity: 0;
@@ -653,6 +743,16 @@ export default function ReviewDashboardPage() {
           }
           100% {
             transform: translateY(100vh);
+          }
+        }
+        @keyframes summaryExpand {
+          from {
+            opacity: 0;
+            transform: translateY(-6px) scaleY(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scaleY(1);
           }
         }
       `}</style>
