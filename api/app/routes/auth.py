@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, get_db
 from app.models.users import User
 from app.schemas.auth import (
-    AuthTokenResponse,
     LinkGuestReviewsRequest,
     LinkGuestReviewsResponse,
     PasswordEmailCheckRequest,
@@ -91,17 +90,17 @@ async def google_callback(
         db.commit()
     logger.info(f"google user resolved user_id={user.id} email={user.email}")
 
-    # Optional guest review linking from callback query
-    if guest_tokens:
-        token_list = [t.strip() for t in guest_tokens.split(",")]
-        linked_count = link_guest_reviews_to_user(db=db, user=user, guest_tokens=token_list)
-        logger.info(f"guest reviews linked user_id={user.id} linked_count={linked_count}")
-
     jwt_token = create_access_token(str(user.id))
-    response.delete_cookie("oidc_state")
+    logger.info(f"auth token issued user_id={user.id} email={user.email}")
     
-    logger.info(f"auth token issued user_id={user.id}")
-    return AuthTokenResponse(access_token=jwt_token, token_type="Bearer")
+    frontend_base = settings.FRONTEND_BASE_URL.rstrip("/")
+    redirect_url = (
+        f"{frontend_base}/signin/callback"
+        f"?token_type=Bearer&access_token={jwt_token}"
+    )
+    resp = RedirectResponse(url=redirect_url, status_code=303)
+    resp.delete_cookie("oidc_state")
+    return resp
 
 
 @router.post("/link-guest-reviews", response_model=LinkGuestReviewsResponse)

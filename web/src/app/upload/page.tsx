@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
-
+import { getAccessToken, saveGuestToken } from "@/lib/auth/session";
 
 type UiMode = "generic" | "bug" | "security" | "performance" | "maintainability";
 type ApiMode = "generic" | "bug_hunter" | "security" | "performance" | "maintainability";
@@ -20,16 +20,6 @@ const UI_TO_API_MODE: Record<UiMode, ApiMode> = {
   performance: "performance",
   maintainability: "maintainability",
 };
-
-function saveGuestToken(reviewId: number, guestToken: string) {
-  if (typeof window === "undefined") return;
-  const key = "difflens_guest_review_tokens";
-
-  const currentRaw = window.localStorage.getItem(key);
-  const current: Record<string, string> = currentRaw ? JSON.parse(currentRaw) : {};
-  current[String(reviewId)] = guestToken;
-  window.localStorage.setItem(key, JSON.stringify(current));
-}
 
 export default function UploadPage() {
   const router = useRouter();
@@ -76,7 +66,7 @@ export default function UploadPage() {
     try {
       setIsSubmitting(true);
 
-      const token = typeof window !== "undefined" ? window.localStorage.getItem("difflens_access_token") : null;
+      const token = getAccessToken();
 
       let diffContent = diffText;
       let sourceType: "pasted" | "uploaded" = "pasted";
