@@ -34,6 +34,11 @@ export function getGuestTokenMap(): GuestTokenMap {
   return safeParseGuestMap(localStorage.getItem(GUEST_REVIEW_TOKEN_MAP_KEY));
 }
 
+export function getGuestTokenForReview(reviewId: number): string | null {
+  const map = getGuestTokenMap();
+  return map[String(reviewId)] ?? null;
+}
+
 export function saveGuestToken(reviewId: number, guestToken: string): void {
   if (typeof window === "undefined") return;
   const current = getGuestTokenMap();
