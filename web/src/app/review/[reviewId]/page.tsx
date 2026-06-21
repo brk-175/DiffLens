@@ -610,7 +610,7 @@ export default function ReviewDashboardPage() {
             <button
               type="button"
               onClick={() => setIsFilesSidebarCollapsed((prev) => !prev)}
-              className="ml-auto inline-flex items-center justify-center h-7 w-7 rounded border border-[#474835] text-[#c8c8af] hover:text-[#bbcb2e] hover:border-[#bbcb2e]/70 transition-colors"
+              className="ml-auto inline-flex items-center justify-center h-7 w-7 rounded border border-[#474835] text-[#c8c8af] hover:text-[#bbcb2e] hover:border-[#bbcb2e]/70 transition-colors cursor-ew-resize"
               title={isFilesSidebarCollapsed ? "Expand file list" : "Collapse file list"}
               aria-label={isFilesSidebarCollapsed ? "Expand file list" : "Collapse file list"}
             >
@@ -620,7 +620,7 @@ export default function ReviewDashboardPage() {
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto py-2">
+          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
             {files.map((file, i) => {
               const fileIssues = file.issues.length;
               const active = i === selectedFileIndex;
@@ -633,7 +633,7 @@ export default function ReviewDashboardPage() {
                     setExpandedIssueIndex(file.issues.length ? 0 : null);
                   }}
                   title={file.file_path}
-                  className={`w-full text-left flex items-center gap-2 px-3 py-2 border-l-2 transition-all file-list-item ${
+                  className={`w-full text-left flex items-center gap-2 px-3 py-2 border-l-2 transition-all cursor-pointer file-list-item ${
                     active
                       ? "border-[#bbcb2e] bg-[#bbcb2e]/10 text-[#bbcb2e]"
                       : "border-transparent text-[#c8c8af] hover:text-[#e2e2e2]"
@@ -666,8 +666,6 @@ export default function ReviewDashboardPage() {
               <span className="material-symbols-outlined text-base">code</span>
               <span className="font-mono text-sm">{selectedFile?.file_path || "No file selected"}</span>
             </div>
-            <div className="h-full border-r border-[#474835]" />
-            <span className="font-mono text-sm text-[#c8c8af]/80">DiffLens Render</span>
           </div>
 
           <div className="flex-1 overflow-auto p-4 font-mono text-sm leading-6 text-[#e2e2e2]">
@@ -693,7 +691,7 @@ export default function ReviewDashboardPage() {
                   <div className={`pl-4 whitespace-pre-wrap wrap-break-word ${isHighlighted ? "text-[#f5f5f5]" : ""}`}>
                     {line.text}
                     {isHighlighted && isActiveIssue && (
-                      <span className="ml-3 inline-flex px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold bg-[#ff2f57] text-white align-middle">
+                      <span className="ml-3 inline-flex px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border border-[#ff2f57] text-[#ff2f57] align-middle cursor-default select-none">
                         Issue Detected
                       </span>
                     )}
@@ -709,17 +707,11 @@ export default function ReviewDashboardPage() {
             isResultsSidebarCollapsed ? "w-16" : "w-96"
           }`}
         >
-          <div className="p-3 border-b border-[#474835] bg-[#0e0e0e] shrink-0 flex items-center justify-between gap-2">
-            {!isResultsSidebarCollapsed && (
-              <h2 className="text-xs uppercase tracking-widest">
-                Analysis Results ({filteredIssues.length}/{issues.length})
-              </h2>
-            )}
-
+          <div className="p-3 border-b border-[#474835] bg-[#0e0e0e] shrink-0 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setIsResultsSidebarCollapsed((prev) => !prev)}
-              className="ml-auto inline-flex items-center justify-center h-7 w-7 rounded border border-[#474835] text-[#c8c8af] hover:text-[#bbcb2e] hover:border-[#bbcb2e]/70 transition-colors"
+              className="inline-flex items-center justify-center h-7 w-7 rounded border border-[#474835] text-[#c8c8af] hover:text-[#bbcb2e] hover:border-[#bbcb2e]/70 transition-colors cursor-ew-resize"
               title={isResultsSidebarCollapsed ? "Expand analysis panel" : "Collapse analysis panel"}
               aria-label={isResultsSidebarCollapsed ? "Expand analysis panel" : "Collapse analysis panel"}
             >
@@ -727,6 +719,12 @@ export default function ReviewDashboardPage() {
                 {isResultsSidebarCollapsed ? "chevron_left" : "chevron_right"}
               </span>
             </button>
+
+            {!isResultsSidebarCollapsed && (
+              <h2 className="text-xs uppercase tracking-widest pl-2">
+                Analysis Results ({filteredIssues.length}/{issues.length})
+              </h2>
+            )}
           </div>
 
           {!isResultsSidebarCollapsed && (
