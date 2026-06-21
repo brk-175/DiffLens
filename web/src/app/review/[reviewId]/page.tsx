@@ -402,7 +402,7 @@ export default function ReviewDashboardPage() {
   const riskTone = RISK_TONE[normalizeToken(riskLevel)] ?? RISK_TONE.pending;
 
   return (
-    <div className="bg-[#000000] text-[#e2e2e2] h-screen flex flex-col overflow-hidden relative pt-18">
+    <div className="bg-[#000000] text-[#e2e2e2] min-h-screen flex flex-col overflow-x-hidden overflow-y-auto relative pt-18">
       <canvas id="review-canvas-bg" className="absolute inset-0 w-full h-full -z-10 opacity-30 pointer-events-none" />
 
       <header className="border-b border-[#474835] bg-[#000000]/90 backdrop-blur-md px-6 py-5 flex flex-col gap-4 z-10">
@@ -558,7 +558,7 @@ export default function ReviewDashboardPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden z-10">
+      <div className="flex-1 flex z-10 min-h-130">
         <aside className="w-64 border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left">
           <div className="p-4 border-b border-[#474835]">
             <h2 className="text-xs uppercase tracking-widest text-[#c8c8af]">Files Reviewed</h2>
@@ -596,8 +596,6 @@ export default function ReviewDashboardPage() {
         </aside>
 
         <main className="flex-1 bg-[#000000]/80 flex flex-col overflow-hidden relative animate-fade-scale">
-          <div className="scan-line" />
-
           <div className="h-10 border-b border-[#474835] flex items-center px-4 gap-4 bg-[#0e0e0e] shrink-0 z-10 relative">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-base">code</span>
