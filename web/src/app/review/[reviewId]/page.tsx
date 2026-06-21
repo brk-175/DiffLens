@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useParams } from "next/navigation";
 import { getAccessToken, getGuestTokenForReview } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -278,10 +278,16 @@ export default function ReviewDashboardPage() {
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isFilesSidebarCollapsed, setIsFilesSidebarCollapsed] = useState(false);
   const [isResultsSidebarCollapsed, setIsResultsSidebarCollapsed] = useState(false);
+  const [filesSidebarWidth, setFilesSidebarWidth] = useState(256);
+  const [resultsSidebarWidth, setResultsSidebarWidth] = useState(384);
+  const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [activeSeverityFilter, setActiveSeverityFilter] = useState<Severity | "all">("all");
   const [copiedBlockKey, setCopiedBlockKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  const filesSidebarRef = useRef<HTMLElement | null>(null);
+  const resultsSidebarRef = useRef<HTMLElement | null>(null);
+  const resizeRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const container = document.getElementById("review-canvas-bg") as HTMLCanvasElement | null;
@@ -518,6 +524,72 @@ export default function ReviewDashboardPage() {
   const verdictTone = VERDICT_TONE[normalizeToken(verdict)] ?? VERDICT_TONE.pending;
   const riskTone = RISK_TONE[normalizeToken(riskLevel)] ?? RISK_TONE.pending;
 
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const startSidebarResize = (side: "files" | "results", event: ReactMouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsSidebarResizing(true);
+
+    const startX = event.clientX;
+    const startWidth = side === "files" ? filesSidebarWidth : resultsSidebarWidth;
+    const min = side === "files" ? 220 : 300;
+    const max = side === "files" ? 460 : 640;
+  const collapseThreshold = side === "files" ? 170 : 240;
+    const targetRef = side === "files" ? filesSidebarRef : resultsSidebarRef;
+    const widthRef = { current: startWidth };
+  const shouldCollapseRef = { current: false };
+
+    const applyWidth = () => {
+      resizeRafRef.current = null;
+      widthRef.current = clamp(widthRef.current, min, max);
+      if (targetRef.current) {
+        targetRef.current.style.width = `${widthRef.current}px`;
+      }
+    };
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const rawWidth = side === "files" ? startWidth + delta : startWidth - delta;
+      shouldCollapseRef.current = rawWidth <= collapseThreshold;
+
+      if (side === "files") {
+        widthRef.current = shouldCollapseRef.current ? min : clamp(rawWidth, min, max);
+      } else {
+        widthRef.current = shouldCollapseRef.current ? min : clamp(rawWidth, min, max);
+      }
+
+      if (resizeRafRef.current === null) {
+        resizeRafRef.current = requestAnimationFrame(applyWidth);
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      if (resizeRafRef.current !== null) {
+        cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = null;
+      }
+
+      if (side === "files") {
+        setFilesSidebarWidth(widthRef.current);
+        setIsFilesSidebarCollapsed(shouldCollapseRef.current);
+      } else {
+        setResultsSidebarWidth(widthRef.current);
+        setIsResultsSidebarCollapsed(shouldCollapseRef.current);
+      }
+
+      setIsSidebarResizing(false);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
+
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "ew-resize";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
   return (
     <div className="bg-[#000000] text-[#e2e2e2] min-h-screen flex flex-col overflow-x-hidden overflow-y-auto relative pt-18">
       <canvas id="review-canvas-bg" className="absolute inset-0 w-full h-full -z-10 opacity-30 pointer-events-none" />
@@ -677,9 +749,11 @@ export default function ReviewDashboardPage() {
 
       <div className="flex-1 flex z-10 min-h-130 px-6 pb-5">
         <aside
-          className={`border border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left transition-all duration-300 rounded-l-lg overflow-hidden ${
-            isFilesSidebarCollapsed ? "w-16" : "w-64"
+          ref={filesSidebarRef}
+          className={`relative border border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left rounded-l-lg overflow-hidden ${
+            isSidebarResizing ? "" : "transition-all duration-300"
           }`}
+          style={{ width: isFilesSidebarCollapsed ? 64 : filesSidebarWidth }}
         >
           <div className="p-3 border-b border-[#474835] flex items-center justify-between gap-2">
             {!isFilesSidebarCollapsed && (
@@ -736,12 +810,22 @@ export default function ReviewDashboardPage() {
               </div>
             )}
           </nav>
+
+          {!isFilesSidebarCollapsed && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize files panel"
+              className="absolute top-0 right-0 h-full w-1.5 cursor-ew-resize bg-transparent hover:bg-[#bbcb2e]/25 active:bg-[#bbcb2e]/35 transition-colors"
+              onMouseDown={(event) => startSidebarResize("files", event)}
+            />
+          )}
         </aside>
 
         <main className="flex-1 bg-[#000000]/80 border-y border-r border-[#474835] flex flex-col overflow-hidden relative animate-fade-scale">
           <div className="h-10 border-b border-[#474835] flex items-center px-4 gap-4 bg-[#0e0e0e] shrink-0 z-10 relative">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-base">code</span>
+              <span className="material-symbols-outlined text-base">description</span>
               <span className="font-mono text-sm">{selectedFile?.file_path || "No file selected"}</span>
             </div>
           </div>
@@ -781,10 +865,22 @@ export default function ReviewDashboardPage() {
         </main>
 
         <aside
-          className={`border-y border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col z-10 animate-slide-right rounded-r-lg overflow-hidden transition-all duration-300 ${
-            isResultsSidebarCollapsed ? "w-16" : "w-96"
+          ref={resultsSidebarRef}
+          className={`relative border-y border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col z-10 animate-slide-right rounded-r-lg overflow-hidden ${
+            isSidebarResizing ? "" : "transition-all duration-300"
           }`}
+          style={{ width: isResultsSidebarCollapsed ? 64 : resultsSidebarWidth }}
         >
+          {!isResultsSidebarCollapsed && (
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize analysis panel"
+              className="absolute top-0 left-0 h-full w-1.5 cursor-ew-resize bg-transparent hover:bg-[#bbcb2e]/25 active:bg-[#bbcb2e]/35 transition-colors z-20"
+              onMouseDown={(event) => startSidebarResize("results", event)}
+            />
+          )}
+
           <div className="p-3 border-b border-[#474835] bg-[#0e0e0e] shrink-0 flex items-center gap-2">
             <button
               type="button"
@@ -890,29 +986,42 @@ export default function ReviewDashboardPage() {
                           <button
                             type="button"
                             onClick={() => setExpandedIssueIndex(expanded ? null : issueIndex)}
-                            className="flex-1 text-left flex items-center justify-between gap-2 cursor-pointer"
+                            className="flex-1 text-left cursor-pointer"
                           >
                             <span className={`text-l leading-snug ${ISSUE_COMMENT_TONE[issue.severity]}`}>
                               {issue.comment}
                             </span>
-                            <span className={`material-symbols-outlined text-base text-[#a6acb7] transition-transform ${expanded ? "rotate-180" : ""}`}>
-                              expand_more
-                            </span>
                           </button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            className="h-7 w-7 border-[#3a3d44] text-[#d4d7dd] hover:text-white bg-[#1c1e22] hover:bg-[#22252b] cursor-pointer"
-                            onClick={() => copyBlock(issue.comment, `${issueIndex}-comment`)}
-                            title="Copy comment"
-                          >
-                            {copiedBlockKey === `${issueIndex}-comment` ? (
-                              <Check className="size-3.5" />
-                            ) : (
-                              <Copy className="size-3.5" />
-                            )}
-                          </Button>
+
+                          <div className="self-stretch flex flex-col items-center justify-between gap-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              className="h-7 w-7 border-[#3a3d44] text-[#d4d7dd] hover:text-white bg-[#1c1e22] hover:bg-[#22252b] cursor-pointer"
+                              onClick={() => copyBlock(issue.comment, `${issueIndex}-comment`)}
+                              title="Copy comment"
+                            >
+                              {copiedBlockKey === `${issueIndex}-comment` ? (
+                                <Check className="size-3.5" />
+                              ) : (
+                                <Copy className="size-3.5" />
+                              )}
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              className="h-7 w-7 border-[#3a3d44] text-[#a6acb7] hover:text-white bg-[#1c1e22] hover:bg-[#22252b] cursor-pointer"
+                              onClick={() => setExpandedIssueIndex(expanded ? null : issueIndex)}
+                              title={expanded ? "Collapse details" : "Expand details"}
+                            >
+                              <span className={`material-symbols-outlined text-base transition-transform ${expanded ? "rotate-180" : ""}`}>
+                                expand_more
+                              </span>
+                            </Button>
+                          </div>
                         </div>
 
                         {expanded && (
