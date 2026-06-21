@@ -2,6 +2,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { getAccessToken, getGuestTokenForReview } from "@/lib/auth/session";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Check, Copy } from "lucide-react";
 
 type ReviewStatus = "queued" | "processing" | "complete" | "failed";
 type Severity = "critical" | "high" | "medium" | "low";
@@ -120,6 +125,36 @@ const RISK_TONE: Record<string, ToneStyle> = {
   },
 };
 
+const ISSUE_COMMENT_TONE: Record<Severity, string> = {
+  low: "text-[#1DCD9F]",      // success
+  medium: "text-[#fbbf24]",   // yellow
+  high: "text-[#fb923c]",     // orange
+  critical: "text-[#ff4d6d]", // error
+};
+
+const SEVERITY_FILTER_TONE: Record<"all" | Severity, { active: string; inactive: string }> = {
+  all: {
+    active: "border-[#60A5FA]/70 bg-[#60A5FA]/15 text-[#60A5FA]",
+    inactive: "border-[#474835] bg-[#1a1a1a] text-[#c8c8af] hover:border-[#60A5FA]",
+  },
+  critical: {
+    active: "border-[#ff4d6d]/70 bg-[#ff4d6d]/15 text-[#ff4d6d]",
+    inactive: "border-[#474835] bg-[#1a1a1a]/8 text-[#c8c8af] hover:border-[#ff4d6d]/60",
+  },
+  high: {
+    active: "border-[#fb923c]/70 bg-[#fb923c]/15 text-[#fb923c]",
+    inactive: "border-[#474835] bg-[#1a1a1a]/8 text-[#c8c8af] hover:border-[#fb923c]/60",
+  },
+  medium: {
+    active: "border-[#fbbf24]/70 bg-[#fbbf24]/15 text-[#fbbf24]",
+    inactive: "border-[#474835] bg-[#1a1a1a]/8 text-[#c8c8af] hover:border-[#fbbf24]/60",
+  },
+  low: {
+    active: "border-[#1DCD9F]/70 bg-[#1DCD9F]/15 text-[#1DCD9F]",
+    inactive: "border-[#474835] bg-[#1a1a1a]/8 text-[#c8c8af] hover:border-[#1DCD9F]/60",
+  },
+};
+
 function buildViewerLines(file: ReviewFile | undefined): ViewerLine[] {
   if (!file) return [];
 
@@ -184,6 +219,49 @@ function riskLabel(value: string | null | undefined): string {
   return token.replaceAll("_", " ");
 }
 
+function CopyableCodeBlock({
+  title,
+  content,
+  copyKey,
+  copiedKey,
+  onCopy,
+  accent = false,
+}: {
+  title: string;
+  content: string;
+  copyKey: string;
+  copiedKey: string | null;
+  onCopy: (text: string, key: string) => void;
+  accent?: boolean;
+}) {
+  const copied = copiedKey === copyKey;
+
+  return (
+    <div className="rounded-lg border border-[#2f3136] bg-[#111214] overflow-hidden">
+      <div className="px-3 py-2 border-b border-[#2f3136] bg-[#17181b] flex items-center justify-between gap-2">
+  <span className="text-[11px] uppercase tracking-wider text-[#bbcb2e]">{title}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="h-6 w-6 border-[#3a3d44] text-[#d4d7dd] hover:text-white bg-[#1c1e22] hover:bg-[#22252b] cursor-pointer"
+          onClick={() => onCopy(content, copyKey)}
+        >
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+        </Button>
+      </div>
+
+      <pre
+        className={`p-3 font-mono text-[13px] leading-6 whitespace-pre-wrap wrap-break-word overflow-x-auto ${
+          accent ? "text-[#9af3e6]" : "text-[#d9dce2]"
+        }`}
+      >
+        {content}
+      </pre>
+    </div>
+  );
+}
+
 export default function ReviewDashboardPage() {
   const params = useParams<{ reviewId: string }>();
   const reviewId = Number(params.reviewId);
@@ -196,12 +274,12 @@ export default function ReviewDashboardPage() {
   const [statusData, setStatusData] = useState<ReviewStatusResponse | null>(null);
   const [resultData, setResultData] = useState<ReviewResult | null>(null);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
-  const [expandedIssueIndex, setExpandedIssueIndex] = useState<number | null>(0);
+  const [expandedIssueIndex, setExpandedIssueIndex] = useState<number | null>(null);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [isFilesSidebarCollapsed, setIsFilesSidebarCollapsed] = useState(false);
   const [isResultsSidebarCollapsed, setIsResultsSidebarCollapsed] = useState(false);
   const [activeSeverityFilter, setActiveSeverityFilter] = useState<Severity | "all">("all");
-  const [copiedIssueIndex, setCopiedIssueIndex] = useState<number | null>(null);
+  const [copiedBlockKey, setCopiedBlockKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -414,15 +492,15 @@ export default function ReviewDashboardPage() {
 
   useEffect(() => {
     setActiveSeverityFilter("all");
-    setExpandedIssueIndex(issues.length ? 0 : null);
+    setExpandedIssueIndex(null);
   }, [selectedFileIndex, issues.length]);
 
-  const copySuggestedFix = async (text: string, issueIndex: number) => {
+  const copyBlock = async (text: string, key: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedIssueIndex(issueIndex);
+      setCopiedBlockKey(key);
       window.setTimeout(() => {
-        setCopiedIssueIndex((current) => (current === issueIndex ? null : current));
+        setCopiedBlockKey((current) => (current === key ? null : current));
       }, 1500);
     } catch {
       // no-op
@@ -555,7 +633,7 @@ export default function ReviewDashboardPage() {
                         type="button"
                         onClick={() => {
                           setSelectedFileIndex(idx);
-                          setExpandedIssueIndex(file.issues.length ? 0 : null);
+                          setExpandedIssueIndex(null);
                         }}
                         className="w-full text-left rounded border border-[#474835] bg-[#121212] hover:border-[#bbcb2e]/70 hover:bg-[#161a0b] transition-colors p-3"
                       >
@@ -630,7 +708,7 @@ export default function ReviewDashboardPage() {
                   type="button"
                   onClick={() => {
                     setSelectedFileIndex(i);
-                    setExpandedIssueIndex(file.issues.length ? 0 : null);
+                    setExpandedIssueIndex(null);
                   }}
                   title={file.file_path}
                   className={`w-full text-left flex items-center gap-2 px-3 py-2 border-l-2 transition-all cursor-pointer file-list-item ${
@@ -740,15 +818,14 @@ export default function ReviewDashboardPage() {
                   const count =
                     level === "all" ? issues.length : severityCounts[level as Exclude<typeof level, "all">];
                   const isActive = activeSeverityFilter === level;
+                  const tone = SEVERITY_FILTER_TONE[level];
                   return (
                     <button
                       key={level}
                       type="button"
                       onClick={() => setActiveSeverityFilter(level)}
-                      className={`px-2 py-0.5 text-[10px] rounded border uppercase tracking-wide transition-colors ${
-                        isActive
-                          ? "border-[#bbcb2e]/70 bg-[#bbcb2e]/15 text-[#d7e84a]"
-                          : "border-[#474835] bg-[#1a1a1a] text-[#c8c8af] hover:border-[#91927c]"
+                      className={`px-2 py-0.5 text-[10px] rounded border uppercase tracking-wide cursor-pointer transition-colors ${
+                        isActive ? tone.active : tone.inactive
                       }`}
                     >
                       {level} ({count})
@@ -757,88 +834,116 @@ export default function ReviewDashboardPage() {
                 })}
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
                 {filteredIssues.map(({ issue, index: issueIndex }) => {
                   const expanded = issueIndex === expandedIssueIndex;
+                  const whyBlocks = [
+                    {
+                      key: "what_is_wrong",
+                      title: "What is wrong",
+                      content: issue.why_this_matters.what_is_wrong,
+                    },
+                    {
+                      key: "why_it_matters",
+                      title: "Why it matters",
+                      content: issue.why_this_matters.why_it_matters,
+                    },
+                    {
+                      key: "how_to_fix",
+                      title: "How to fix",
+                      content: issue.why_this_matters.how_to_fix,
+                    },
+                  ];
 
                   return (
-                    <article key={`${issue.comment}-${issueIndex}`} className="analysis-card rounded-lg overflow-hidden bg-[#1b1b1b]">
-                      <div className="p-4 border-b border-[#474835]/60 bg-[#ff4d6d]/5">
-                        <div className="flex items-center justify-between mb-2 gap-2">
+                    <Card
+                      key={`${issue.comment}-${issueIndex}`}
+                      className="analysis-card rounded-xl overflow-hidden bg-[#15171b] border-[#2f3136]"
+                    >
+                      <CardHeader className="px-3 py-1 border-b border-[#2f3136] bg-[#15171b]">
+                        <div className="flex items-center justify-between mb-1.5 gap-2">
                           <div className="flex gap-2">
-                            <span className={`px-2 py-0.5 text-[10px] rounded uppercase border font-bold ${severityClass[issue.severity]}`}>
+                            <Badge className={`uppercase text-[10px] ${severityClass[issue.severity]} font-semibold`}>
                               {issue.severity}
-                            </span>
+                            </Badge>
                             {issue.mode_tags.slice(0, 1).map((mode) => (
-                              <span
+                              <Badge
                                 key={mode}
-                                className="px-2 py-0.5 text-[10px] rounded uppercase border border-[#91927c] text-[#c8c8af]"
+                                variant="outline"
+                                className="uppercase text-[10px] border-[#4b4f58] text-[#c8ccd2] bg-[#1a1c21]"
                               >
                                 {mode.replace("_", " ")}
-                              </span>
+                              </Badge>
                             ))}
                           </div>
 
-                          <span className="text-xs text-[#c8c8af]">
+                          <span className="text-xs text-[#b8bec8]">
                             Lines {issue.line_start ?? "?"}-{issue.line_end ?? issue.line_start ?? "?"}
                           </span>
                         </div>
 
-                        <h3 className="text-lg font-semibold">{issue.comment}</h3>
-                      </div>
+                        <CardTitle className="sr-only">Issue Details</CardTitle>
+                      </CardHeader>
 
-                      <div className="p-4 flex flex-col gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedIssueIndex(expanded ? null : issueIndex)}
-                          className="text-left text-[#bbcb2e] hover:underline flex items-center justify-between"
-                        >
-                          <span>Why this matters</span>
-                          <span className={`material-symbols-outlined text-base transition-transform ${expanded ? "rotate-180" : ""}`}>
-                            expand_more
-                          </span>
-                        </button>
+                      <CardContent className="p-4 flex flex-col gap-3 bg-[#15171b]">
+                        <div className="rounded-lg border border-[#3a3d44] bg-[#15171b] px-3 py-2.5 flex items-start gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedIssueIndex(expanded ? null : issueIndex)}
+                            className="flex-1 text-left flex items-center justify-between gap-2 cursor-pointer"
+                          >
+                            <span className={`text-l leading-snug ${ISSUE_COMMENT_TONE[issue.severity]}`}>
+                              {issue.comment}
+                            </span>
+                            <span className={`material-symbols-outlined text-base text-[#a6acb7] transition-transform ${expanded ? "rotate-180" : ""}`}>
+                              expand_more
+                            </span>
+                          </button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            className="h-7 w-7 border-[#3a3d44] text-[#d4d7dd] hover:text-white bg-[#1c1e22] hover:bg-[#22252b] cursor-pointer"
+                            onClick={() => copyBlock(issue.comment, `${issueIndex}-comment`)}
+                            title="Copy comment"
+                          >
+                            {copiedBlockKey === `${issueIndex}-comment` ? (
+                              <Check className="size-3.5" />
+                            ) : (
+                              <Copy className="size-3.5" />
+                            )}
+                          </Button>
+                        </div>
 
                         {expanded && (
-                          <div className="space-y-2 text-sm text-[#c8c8af]">
-                            <p>
-                              <strong className="text-[#e2e2e2]">What is wrong:</strong> {issue.why_this_matters.what_is_wrong}
-                            </p>
-                            <p>
-                              <strong className="text-[#e2e2e2]">Why it matters:</strong> {issue.why_this_matters.why_it_matters}
-                            </p>
-                            <p>
-                              <strong className="text-[#e2e2e2]">How to fix:</strong> {issue.why_this_matters.how_to_fix}
-                            </p>
+                          <div className="issue-details-scroll max-h-60 overflow-y-auto pr-1 space-y-3">
+                            <div className="space-y-2.5">
+                              {whyBlocks.map((block) => (
+                                <CopyableCodeBlock
+                                  key={block.key}
+                                  title={block.title}
+                                  content={block.content}
+                                  copyKey={`${issueIndex}-${block.key}`}
+                                  copiedKey={copiedBlockKey}
+                                  onCopy={copyBlock}
+                                />
+                              ))}
+                            </div>
+
+                            {issue.suggested_fix && (
+                              <CopyableCodeBlock
+                                title="Suggested Fix"
+                                content={issue.suggested_fix}
+                                copyKey={`${issueIndex}-suggested-fix`}
+                                copiedKey={copiedBlockKey}
+                                onCopy={copyBlock}
+                                accent
+                              />
+                            )}
                           </div>
                         )}
-
-                        {issue.suggested_fix && (
-                          <div className="mt-1">
-                            <span className="text-xs uppercase text-[#c8c8af] block mb-2">Suggested Fix</span>
-                            <pre className="bg-[#000000] p-3 rounded border border-[#474835] font-mono text-[#1DCD9F] overflow-x-auto whitespace-pre-wrap wrap-break-word text-sm">
-                              {issue.suggested_fix}
-                            </pre>
-                          </div>
-                        )}
-
-                        <div className="mt-2 flex justify-end gap-2">
-                          {issue.suggested_fix && (
-                            <button
-                              type="button"
-                              onClick={() => copySuggestedFix(issue.suggested_fix || "", issueIndex)}
-                              className="px-3 py-2 rounded border border-[#474835] bg-[#0f0f0f] text-[#c8c8af] hover:text-[#e2e2e2] text-xs"
-                            >
-                              {copiedIssueIndex === issueIndex ? "Copied" : "Copy Fix"}
-                            </button>
-                          )}
-                          <button className="px-3 py-2 text-[#c8c8af] hover:text-[#e2e2e2] text-xs">Dismiss</button>
-                          <button className="px-3 py-2 rounded bg-[#bbcb2e] text-[#000000] font-bold text-xs hover:bg-[#d7e84a]">
-                            Apply Fix
-                          </button>
-                        </div>
-                      </div>
-                    </article>
+                      </CardContent>
+                    </Card>
                   );
                 })}
 
@@ -888,11 +993,28 @@ export default function ReviewDashboardPage() {
         }
         .analysis-card {
           transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-          border: 1px solid #ff4d6d;
+          border: 1px solid #2f3136;
         }
         .analysis-card:hover {
-          border-color: #bbcb2e;
-          box-shadow: 0 4px 12px rgba(187, 203, 46, 0.12);
+          border-color: #50545f;
+          box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+        }
+        .issue-details-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #4d5360 transparent;
+        }
+        .issue-details-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .issue-details-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .issue-details-scroll::-webkit-scrollbar-thumb {
+          background: #4d5360;
+          border-radius: 999px;
+        }
+        .issue-details-scroll::-webkit-scrollbar-thumb:hover {
+          background: #606878;
         }
         .issue-highlight {
           background-color: rgba(220, 20, 60, 0.14);
