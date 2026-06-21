@@ -198,6 +198,10 @@ export default function ReviewDashboardPage() {
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [expandedIssueIndex, setExpandedIssueIndex] = useState<number | null>(0);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
+  const [isFilesSidebarCollapsed, setIsFilesSidebarCollapsed] = useState(false);
+  const [isResultsSidebarCollapsed, setIsResultsSidebarCollapsed] = useState(false);
+  const [activeSeverityFilter, setActiveSeverityFilter] = useState<Severity | "all">("all");
+  const [copiedIssueIndex, setCopiedIssueIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
@@ -335,7 +339,7 @@ export default function ReviewDashboardPage() {
       if (!cancelled) {
         setResultData(data);
         setSelectedFileIndex(0);
-        setExpandedIssueIndex(0);
+        setExpandedIssueIndex(null);
       }
       return data;
     };
@@ -385,10 +389,45 @@ export default function ReviewDashboardPage() {
   const issues = selectedFile?.issues ?? [];
   const viewerLines = buildViewerLines(selectedFile);
 
+  const severityCounts = useMemo(
+    () => ({
+      critical: issues.filter((i) => i.severity === "critical").length,
+      high: issues.filter((i) => i.severity === "high").length,
+      medium: issues.filter((i) => i.severity === "medium").length,
+      low: issues.filter((i) => i.severity === "low").length,
+    }),
+    [issues]
+  );
+
+  const filteredIssues = useMemo(
+    () =>
+      issues
+        .map((issue, index) => ({ issue, index }))
+        .filter(({ issue }) => activeSeverityFilter === "all" || issue.severity === activeSeverityFilter),
+    [issues, activeSeverityFilter]
+  );
+
   const criticalCount = useMemo(
     () => issues.filter((issue) => issue.severity === "critical").length,
     [issues]
   );
+
+  useEffect(() => {
+    setActiveSeverityFilter("all");
+    setExpandedIssueIndex(issues.length ? 0 : null);
+  }, [selectedFileIndex, issues.length]);
+
+  const copySuggestedFix = async (text: string, issueIndex: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIssueIndex(issueIndex);
+      window.setTimeout(() => {
+        setCopiedIssueIndex((current) => (current === issueIndex ? null : current));
+      }, 1500);
+    } catch {
+      // no-op
+    }
+  };
 
   const headerSummary =
     resultData?.summary.short_summary ||
@@ -405,7 +444,7 @@ export default function ReviewDashboardPage() {
     <div className="bg-[#000000] text-[#e2e2e2] min-h-screen flex flex-col overflow-x-hidden overflow-y-auto relative pt-18">
       <canvas id="review-canvas-bg" className="absolute inset-0 w-full h-full -z-10 opacity-30 pointer-events-none" />
 
-      <header className="border-b border-[#474835] bg-[#000000]/90 backdrop-blur-md px-6 py-5 flex flex-col gap-4 z-10">
+      <header className="bg-[#000000]/90 backdrop-blur-md px-6 py-5 flex flex-col gap-4 z-10">
         <div className="flex justify-between items-start gap-4">
           <div className="flex flex-col gap-2 max-w-4xl">
             <div className="inline-flex items-center gap-3 rounded-lg bg-[#0c1106]/90 px-3 py-2 shadow-[0_0_16px_rgba(187,203,46,0.08)]">
@@ -516,7 +555,7 @@ export default function ReviewDashboardPage() {
                         type="button"
                         onClick={() => {
                           setSelectedFileIndex(idx);
-                          setExpandedIssueIndex(0);
+                          setExpandedIssueIndex(file.issues.length ? 0 : null);
                         }}
                         className="w-full text-left rounded border border-[#474835] bg-[#121212] hover:border-[#bbcb2e]/70 hover:bg-[#161a0b] transition-colors p-3"
                       >
@@ -558,10 +597,27 @@ export default function ReviewDashboardPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex z-10 min-h-130">
-        <aside className="w-64 border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left">
-          <div className="p-4 border-b border-[#474835]">
-            <h2 className="text-xs uppercase tracking-widest text-[#c8c8af]">Files Reviewed</h2>
+      <div className="flex-1 flex z-10 min-h-130 px-6 pb-5">
+        <aside
+          className={`border border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left transition-all duration-300 rounded-l-lg overflow-hidden ${
+            isFilesSidebarCollapsed ? "w-16" : "w-64"
+          }`}
+        >
+          <div className="p-3 border-b border-[#474835] flex items-center justify-between gap-2">
+            {!isFilesSidebarCollapsed && (
+              <h2 className="text-xs uppercase tracking-widest text-[#c8c8af]">Files Reviewed ({files.length})</h2>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsFilesSidebarCollapsed((prev) => !prev)}
+              className="ml-auto inline-flex items-center justify-center h-7 w-7 rounded border border-[#474835] text-[#c8c8af] hover:text-[#bbcb2e] hover:border-[#bbcb2e]/70 transition-colors"
+              title={isFilesSidebarCollapsed ? "Expand file list" : "Collapse file list"}
+              aria-label={isFilesSidebarCollapsed ? "Expand file list" : "Collapse file list"}
+            >
+              <span className="material-symbols-outlined text-base">
+                {isFilesSidebarCollapsed ? "chevron_right" : "chevron_left"}
+              </span>
+            </button>
           </div>
 
           <nav className="flex-1 overflow-y-auto py-2">
@@ -574,28 +630,37 @@ export default function ReviewDashboardPage() {
                   type="button"
                   onClick={() => {
                     setSelectedFileIndex(i);
-                    setExpandedIssueIndex(0);
+                    setExpandedIssueIndex(file.issues.length ? 0 : null);
                   }}
-                  className={`w-full text-left flex items-center gap-2 px-4 py-2 border-l-2 transition-all file-list-item ${
+                  title={file.file_path}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-2 border-l-2 transition-all file-list-item ${
                     active
                       ? "border-[#bbcb2e] bg-[#bbcb2e]/10 text-[#bbcb2e]"
                       : "border-transparent text-[#c8c8af] hover:text-[#e2e2e2]"
                   }`}
                 >
                   <span className="material-symbols-outlined text-base">description</span>
-                  <span className="font-mono text-sm truncate">{file.file_path}</span>
-                  {fileIssues > 0 && <span className="ml-auto w-2 h-2 rounded-full bg-[#ff4d6d]" />}
+                  {!isFilesSidebarCollapsed && <span className="font-mono text-sm truncate">{file.file_path}</span>}
+                  {fileIssues > 0 && (
+                    <span
+                      className={`${isFilesSidebarCollapsed ? "ml-0" : "ml-auto"} inline-flex items-center justify-center min-w-4 h-4 rounded-full bg-[#ff4d6d]/20 text-[#ff4d6d] text-[10px] font-bold px-1`}
+                    >
+                      {isFilesSidebarCollapsed ? "•" : fileIssues}
+                    </span>
+                  )}
                 </button>
               );
             })}
 
             {!files.length && (
-              <div className="px-4 py-3 text-sm text-[#c8c8af]">No analyzed files yet.</div>
+              <div className={`${isFilesSidebarCollapsed ? "px-2" : "px-4"} py-3 text-sm text-[#c8c8af]`}>
+                {isFilesSidebarCollapsed ? "—" : "No analyzed files yet."}
+              </div>
             )}
           </nav>
         </aside>
 
-        <main className="flex-1 bg-[#000000]/80 flex flex-col overflow-hidden relative animate-fade-scale">
+        <main className="flex-1 bg-[#000000]/80 border-y border-r border-[#474835] flex flex-col overflow-hidden relative animate-fade-scale">
           <div className="h-10 border-b border-[#474835] flex items-center px-4 gap-4 bg-[#0e0e0e] shrink-0 z-10 relative">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-base">code</span>
@@ -639,98 +704,158 @@ export default function ReviewDashboardPage() {
           </div>
         </main>
 
-        <aside className="w-96 border-l border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col z-10 animate-slide-right">
-          <div className="p-4 border-b border-[#474835] bg-[#0e0e0e] shrink-0 flex justify-between items-center">
-            <h2 className="text-xs uppercase tracking-widest">Analysis Results ({issues.length})</h2>
-            {criticalCount > 0 && (
-              <span className="px-2 py-0.5 text-[10px] rounded border border-[#ff4d6d]/30 bg-[#ff4d6d]/20 text-[#ff4d6d] font-bold">
-                {criticalCount} Critical
+        <aside
+          className={`border-y border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col z-10 animate-slide-right rounded-r-lg overflow-hidden transition-all duration-300 ${
+            isResultsSidebarCollapsed ? "w-16" : "w-96"
+          }`}
+        >
+          <div className="p-3 border-b border-[#474835] bg-[#0e0e0e] shrink-0 flex items-center justify-between gap-2">
+            {!isResultsSidebarCollapsed && (
+              <h2 className="text-xs uppercase tracking-widest">
+                Analysis Results ({filteredIssues.length}/{issues.length})
+              </h2>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsResultsSidebarCollapsed((prev) => !prev)}
+              className="ml-auto inline-flex items-center justify-center h-7 w-7 rounded border border-[#474835] text-[#c8c8af] hover:text-[#bbcb2e] hover:border-[#bbcb2e]/70 transition-colors"
+              title={isResultsSidebarCollapsed ? "Expand analysis panel" : "Collapse analysis panel"}
+              aria-label={isResultsSidebarCollapsed ? "Expand analysis panel" : "Collapse analysis panel"}
+            >
+              <span className="material-symbols-outlined text-base">
+                {isResultsSidebarCollapsed ? "chevron_left" : "chevron_right"}
               </span>
-            )}
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {issues.map((issue, idx) => {
-              const expanded = idx === expandedIssueIndex;
+          {!isResultsSidebarCollapsed && (
+            <>
+              <div className="px-3 py-2 border-b border-[#474835] bg-[#0f0f0f] flex flex-wrap gap-2 items-center">
+                {criticalCount > 0 && (
+                  <span className="px-2 py-0.5 text-[10px] rounded border border-[#ff4d6d]/30 bg-[#ff4d6d]/20 text-[#ff4d6d] font-bold">
+                    {criticalCount} Critical
+                  </span>
+                )}
 
-              return (
-                <article key={`${issue.comment}-${idx}`} className="analysis-card rounded-lg overflow-hidden bg-[#1b1b1b]">
-                  <div className="p-4 border-b border-[#474835]/60 bg-[#ff4d6d]/5">
-                    <div className="flex items-center justify-between mb-2 gap-2">
-                      <div className="flex gap-2">
-                        <span className={`px-2 py-0.5 text-[10px] rounded uppercase border font-bold ${severityClass[issue.severity]}`}>
-                          {issue.severity}
-                        </span>
-                        {issue.mode_tags.slice(0, 1).map((mode) => (
-                          <span
-                            key={mode}
-                            className="px-2 py-0.5 text-[10px] rounded uppercase border border-[#91927c] text-[#c8c8af]"
-                          >
-                            {mode.replace("_", " ")}
-                          </span>
-                        ))}
-                      </div>
-
-                      <span className="text-xs text-[#c8c8af]">
-                        Lines {issue.line_start ?? "?"}-{issue.line_end ?? issue.line_start ?? "?"}
-                      </span>
-                    </div>
-
-                    <h3 className="text-lg font-semibold">{issue.comment}</h3>
-                  </div>
-
-                  <div className="p-4 flex flex-col gap-3">
+                {(["all", "critical", "high", "medium", "low"] as const).map((level) => {
+                  const count =
+                    level === "all" ? issues.length : severityCounts[level as Exclude<typeof level, "all">];
+                  const isActive = activeSeverityFilter === level;
+                  return (
                     <button
+                      key={level}
                       type="button"
-                      onClick={() => setExpandedIssueIndex(expanded ? null : idx)}
-                      className="text-left text-[#bbcb2e] hover:underline flex items-center justify-between"
+                      onClick={() => setActiveSeverityFilter(level)}
+                      className={`px-2 py-0.5 text-[10px] rounded border uppercase tracking-wide transition-colors ${
+                        isActive
+                          ? "border-[#bbcb2e]/70 bg-[#bbcb2e]/15 text-[#d7e84a]"
+                          : "border-[#474835] bg-[#1a1a1a] text-[#c8c8af] hover:border-[#91927c]"
+                      }`}
                     >
-                      <span>Why this matters</span>
-                      <span className={`material-symbols-outlined text-base transition-transform ${expanded ? "rotate-180" : ""}`}>
-                        expand_more
-                      </span>
+                      {level} ({count})
                     </button>
-
-                    {expanded && (
-                      <div className="space-y-2 text-sm text-[#c8c8af]">
-                        <p>
-                          <strong className="text-[#e2e2e2]">What is wrong:</strong> {issue.why_this_matters.what_is_wrong}
-                        </p>
-                        <p>
-                          <strong className="text-[#e2e2e2]">Why it matters:</strong> {issue.why_this_matters.why_it_matters}
-                        </p>
-                        <p>
-                          <strong className="text-[#e2e2e2]">How to fix:</strong> {issue.why_this_matters.how_to_fix}
-                        </p>
-                      </div>
-                    )}
-
-                    {issue.suggested_fix && (
-                      <div className="mt-1">
-                        <span className="text-xs uppercase text-[#c8c8af] block mb-2">Suggested Fix</span>
-                        <pre className="bg-[#000000] p-3 rounded border border-[#474835] font-mono text-[#1DCD9F] overflow-x-auto whitespace-pre-wrap wrap-break-word text-sm">
-                          {issue.suggested_fix}
-                        </pre>
-                      </div>
-                    )}
-
-                    <div className="mt-2 flex justify-end gap-3">
-                      <button className="px-4 py-2 text-[#c8c8af] hover:text-[#e2e2e2] text-sm">Dismiss</button>
-                      <button className="px-4 py-2 rounded bg-[#bbcb2e] text-[#000000] font-bold text-sm hover:bg-[#d7e84a]">
-                        Apply Fix
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-
-            {!issues.length && (
-              <div className="rounded border border-[#474835] bg-[#1b1b1b] p-4 text-[#c8c8af] text-sm">
-                {loading ? "Analyzing code..." : "No issues found for the selected file."}
+                  );
+                })}
               </div>
-            )}
-          </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {filteredIssues.map(({ issue, index: issueIndex }) => {
+                  const expanded = issueIndex === expandedIssueIndex;
+
+                  return (
+                    <article key={`${issue.comment}-${issueIndex}`} className="analysis-card rounded-lg overflow-hidden bg-[#1b1b1b]">
+                      <div className="p-4 border-b border-[#474835]/60 bg-[#ff4d6d]/5">
+                        <div className="flex items-center justify-between mb-2 gap-2">
+                          <div className="flex gap-2">
+                            <span className={`px-2 py-0.5 text-[10px] rounded uppercase border font-bold ${severityClass[issue.severity]}`}>
+                              {issue.severity}
+                            </span>
+                            {issue.mode_tags.slice(0, 1).map((mode) => (
+                              <span
+                                key={mode}
+                                className="px-2 py-0.5 text-[10px] rounded uppercase border border-[#91927c] text-[#c8c8af]"
+                              >
+                                {mode.replace("_", " ")}
+                              </span>
+                            ))}
+                          </div>
+
+                          <span className="text-xs text-[#c8c8af]">
+                            Lines {issue.line_start ?? "?"}-{issue.line_end ?? issue.line_start ?? "?"}
+                          </span>
+                        </div>
+
+                        <h3 className="text-lg font-semibold">{issue.comment}</h3>
+                      </div>
+
+                      <div className="p-4 flex flex-col gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedIssueIndex(expanded ? null : issueIndex)}
+                          className="text-left text-[#bbcb2e] hover:underline flex items-center justify-between"
+                        >
+                          <span>Why this matters</span>
+                          <span className={`material-symbols-outlined text-base transition-transform ${expanded ? "rotate-180" : ""}`}>
+                            expand_more
+                          </span>
+                        </button>
+
+                        {expanded && (
+                          <div className="space-y-2 text-sm text-[#c8c8af]">
+                            <p>
+                              <strong className="text-[#e2e2e2]">What is wrong:</strong> {issue.why_this_matters.what_is_wrong}
+                            </p>
+                            <p>
+                              <strong className="text-[#e2e2e2]">Why it matters:</strong> {issue.why_this_matters.why_it_matters}
+                            </p>
+                            <p>
+                              <strong className="text-[#e2e2e2]">How to fix:</strong> {issue.why_this_matters.how_to_fix}
+                            </p>
+                          </div>
+                        )}
+
+                        {issue.suggested_fix && (
+                          <div className="mt-1">
+                            <span className="text-xs uppercase text-[#c8c8af] block mb-2">Suggested Fix</span>
+                            <pre className="bg-[#000000] p-3 rounded border border-[#474835] font-mono text-[#1DCD9F] overflow-x-auto whitespace-pre-wrap wrap-break-word text-sm">
+                              {issue.suggested_fix}
+                            </pre>
+                          </div>
+                        )}
+
+                        <div className="mt-2 flex justify-end gap-2">
+                          {issue.suggested_fix && (
+                            <button
+                              type="button"
+                              onClick={() => copySuggestedFix(issue.suggested_fix || "", issueIndex)}
+                              className="px-3 py-2 rounded border border-[#474835] bg-[#0f0f0f] text-[#c8c8af] hover:text-[#e2e2e2] text-xs"
+                            >
+                              {copiedIssueIndex === issueIndex ? "Copied" : "Copy Fix"}
+                            </button>
+                          )}
+                          <button className="px-3 py-2 text-[#c8c8af] hover:text-[#e2e2e2] text-xs">Dismiss</button>
+                          <button className="px-3 py-2 rounded bg-[#bbcb2e] text-[#000000] font-bold text-xs hover:bg-[#d7e84a]">
+                            Apply Fix
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+
+                {!filteredIssues.length && (
+                  <div className="rounded border border-[#474835] bg-[#1b1b1b] p-4 text-[#c8c8af] text-sm">
+                    {loading
+                      ? "Analyzing code..."
+                      : issues.length
+                        ? "No issues match current severity filter."
+                        : "No issues found for the selected file."}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </aside>
       </div>
 
