@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useParams } from "next/navigation";
-import { getAccessToken, getGuestTokenForReview } from "@/lib/auth/session";
+import { getAccessToken } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -383,14 +383,9 @@ export default function ReviewDashboardPage() {
     }
 
     const accessToken = getAccessToken();
-    const guestToken = getGuestTokenForReview(reviewId);
 
     const withAuth = (path: string) => {
-      const url = new URL(`${apiBase}${path}`);
-      if (guestToken) {
-        url.searchParams.set("guest_token", guestToken);
-      }
-      return fetch(url.toString(), {
+      return fetch(`${apiBase}${path}`, {
         headers: {
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },

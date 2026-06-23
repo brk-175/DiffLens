@@ -27,7 +27,6 @@ class ReviewCreateRequest(BaseModel):
 
 class ReviewCreateResponse(BaseModel):
     review_id: int
-    guest_token: str
     status: ReviewStatus
     input_blob_path: str
 

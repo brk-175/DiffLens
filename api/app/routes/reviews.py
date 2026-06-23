@@ -1,5 +1,4 @@
 import hashlib
-import secrets
 import asyncio
 import json
 import logging
@@ -7,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from rq import Queue
 from sqlalchemy.orm import Session
 from app.core.config import settings
-from app.core.deps import get_db, get_optional_current_user, get_current_user
+from app.core.deps import get_db, get_current_user
 from app.models.reviews import Review, ReviewFile, ReviewIssue
 from app.models.users import User
 from app.schemas.reviews import ReviewCreateRequest, ReviewCreateResponse, ReviewStatus, ReviewStatusResponse, ReviewListItem, ReviewListResponse
@@ -23,21 +22,13 @@ logger = logging.getLogger(__name__)
 
 def _assert_review_access(
     review: Review,
-    guest_token: str | None,
-    current_user: User | None,
+    current_user: User,
 ) -> None:
-    # Guest-owned review: guest token required
     if review.created_by is None:
-        if not guest_token or review.guest_token != guest_token:
-            raise HTTPException(status_code=403, detail="Access denied")
-        return
-
-    # User-owned review: logged-in owner required
-    if current_user is None:
-        logger.warning(f"review access denied review_id={review.id} created_by={review.created_by} has_guest_token={bool(guest_token)}")
-        raise HTTPException(status_code=401, detail="Authentication required!")
+        logger.warning(f"review access denied review_id={review.id} reason=unowned_review")
+        raise HTTPException(status_code=403, detail="Access denied")
     if review.created_by != current_user.id:
-        logger.warning(f"review access denied review_id={review.id} created_by={review.created_by} has_guest_token={bool(guest_token)}")
+        logger.warning(f"review access denied review_id={review.id} created_by={review.created_by} user_id={current_user.id}")
         raise HTTPException(status_code=403, detail="Access denied!")
 
 
@@ -46,12 +37,11 @@ def create_review(
     payload: ReviewCreateRequest,
     db: Session = Depends(get_db),
     reviews_queue: Queue = Depends(get_reviews_queue),
+    current_user: User = Depends(get_current_user),
 ):
     logger.info(f"create_review request received source_type={payload.source_type} modes={[m.value if hasattr(m,'value') else str(m) for m in payload.modes]}")
     if len(payload.diff_content) > 2_000_000:
         raise HTTPException(status_code=413, detail="Diff too large")
-
-    guest_token = secrets.token_urlsafe(16)
 
     # Stable hash for pasted naming
     diff_hash = hashlib.sha256(payload.diff_content.encode("utf-8")).hexdigest()[:12]
@@ -66,9 +56,10 @@ def create_review(
         raise HTTPException(status_code=400, detail="source_type must be 'pasted' or 'uploaded'")
 
     review = Review(
+        tenant_id=current_user.tenant_id,
+        created_by=current_user.id,
         status=ReviewStatus.queued.value,
         mode_flags={mode.value if hasattr(mode, "value") else str(mode): True for mode in payload.modes},
-        guest_token=guest_token,
         storage_provider=settings.STORAGE_PROVIDER,
         storage_bucket=settings.MINIO_BUCKET,
     )
@@ -101,7 +92,6 @@ def create_review(
 
     return ReviewCreateResponse(
         review_id=review.id,
-        guest_token=guest_token,
         status=ReviewStatus(review.status),
         input_blob_path=blob_path,
     )
@@ -110,15 +100,14 @@ def create_review(
 @router.get("/{review_id}/result")
 def get_review_result(
     review_id: int,
-    guest_token: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     review = db.get(Review, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    _assert_review_access(review, guest_token, current_user)
+    _assert_review_access(review, current_user)
 
     if review.status != ReviewStatus.complete.value:
         logger.info(f"result requested before ready; review_id={review.id} status={review.status}")
@@ -139,9 +128,8 @@ def get_review_result(
 @router.get("/issues/{issue_id}/details")
 def get_issue_details(
     issue_id: int,
-    guest_token: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     issue = db.get(ReviewIssue, issue_id)
     if not issue:
@@ -152,7 +140,7 @@ def get_issue_details(
         raise HTTPException(status_code=404, detail="Parent review not found")
 
     review = review_file.review
-    _assert_review_access(review, guest_token, current_user)
+    _assert_review_access(review, current_user)
 
     details = issue.details
     storage = StorageService()
@@ -184,15 +172,14 @@ def get_issue_details(
 @router.get("/{review_id}/stream")
 async def stream_review_events(
     review_id: int,
-    guest_token: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     review = db.get(Review, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    _assert_review_access(review, guest_token, current_user)
+    _assert_review_access(review, current_user)
 
     async def event_generator():
         # initial event so UI has immediate state
@@ -235,15 +222,14 @@ async def stream_review_events(
 @router.get("/{review_id}", response_model=ReviewStatusResponse)
 def get_review_status(
     review_id: int,
-    guest_token: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     review = db.get(Review, review_id)
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    _assert_review_access(review, guest_token, current_user)
+    _assert_review_access(review, current_user)
 
     return ReviewStatusResponse(
         review_id=review.id,

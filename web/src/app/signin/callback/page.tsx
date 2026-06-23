@@ -1,16 +1,12 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { linkGuestReviews, setAccessToken } from "@/lib/auth/session";
+import { setAccessToken } from "@/lib/auth/session";
 
 
 export default function SignInCallbackPage() {
   const router = useRouter();
   const params = useSearchParams();
-  const apiBase = useMemo(
-    () => (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/$/, ""),
-    []
-  );
 
   const [message, setMessage] = useState("Completing sign in...");
 
@@ -26,12 +22,6 @@ export default function SignInCallbackPage() {
       try {
         setAccessToken(accessToken);
 
-        try {
-          await linkGuestReviews(apiBase, accessToken);
-        } catch (linkErr) {
-          console.error("Guest linking failed after Google sign-in: ", linkErr);
-        }
-
         // Clean URL + move user forward
         router.replace("/upload");
       } catch {
@@ -40,7 +30,7 @@ export default function SignInCallbackPage() {
     };
 
     void run();
-  }, [apiBase, params, router]);
+  }, [params, router]);
 
   return (
     <main className="min-h-screen bg-black text-white pt-24 px-6 flex items-center justify-center">

@@ -1,7 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getGuestTokenList, linkGuestReviews, setAccessToken } from "@/lib/auth/session";
+import { setAccessToken } from "@/lib/auth/session";
 
 
 type AuthStep = "email" | "create_password" | "enter_password";
@@ -132,13 +132,6 @@ export default function SignInPage() {
 
       const data: SignInResponse = await res.json();
       setAccessToken(data.access_token);
-      try {
-        await linkGuestReviews(apiBase, data.access_token);
-      } catch (linkErr) {
-        // Non-blocking: user can still continue
-        console.error("Guest linking failed after password sign-in: ", linkErr);
-        setError("Some guest reviews could not be linked. You can still continue.");
-      }
       router.replace("/upload");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Authentication failed.");

@@ -1,16 +1,15 @@
 "use client";
 import { useMemo, useRef, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
-import { getAccessToken, saveGuestToken } from "@/lib/auth/session";
+import { getAccessToken } from "@/lib/auth/session";
 
 type UiMode = "generic" | "bug" | "security" | "performance" | "maintainability";
 type ApiMode = "generic" | "bug_hunter" | "security" | "performance" | "maintainability";
 
 type CreateReviewResponse = {
   review_id: number;
-  guest_token: string;
-  status: "queued" | "processing" | "complete" | "failed";
   input_blob_path: string;
+  status: "queued" | "processing" | "complete" | "failed";
 };
 
 const UI_TO_API_MODE: Record<UiMode, ApiMode> = {
@@ -67,6 +66,10 @@ export default function UploadPage() {
       setIsSubmitting(true);
 
       const token = getAccessToken();
+      if (!token) {
+        router.push("/signin");
+        return;
+      }
 
       let diffContent = diffText;
       let sourceType: "pasted" | "uploaded" = "pasted";
@@ -102,10 +105,6 @@ export default function UploadPage() {
       }
 
       const data: CreateReviewResponse = await response.json();
-
-      if (data.guest_token) {
-        saveGuestToken(data.review_id, data.guest_token);
-      }
 
       router.push(`/review/${data.review_id}`);
     } catch (err) {

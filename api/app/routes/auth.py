@@ -3,17 +3,13 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
-from app.core.deps import get_current_user, get_db
-from app.models.users import User
+from app.core.deps import get_db
 from app.schemas.auth import (
-    LinkGuestReviewsRequest,
-    LinkGuestReviewsResponse,
     PasswordEmailCheckRequest,
     PasswordEmailCheckResponse,
     PasswordSignInRequest,
     PasswordSignInResponse
 )
-from app.services.auth import link_guest_reviews_to_user
 from app.services.google_oidc import (
     build_google_auth_url,
     exchange_code_for_tokens,
@@ -53,7 +49,6 @@ async def google_callback(
     code: str = Query(...),
     state: str = Query(...),
     db: Session = Depends(get_db),
-    guest_tokens: str | None = Query(None),
 ):
     # CSRF state check
     cookie_state = request.cookies.get("oidc_state")
@@ -102,20 +97,6 @@ async def google_callback(
     resp = RedirectResponse(url=redirect_url, status_code=303)
     resp.delete_cookie("oidc_state")
     return resp
-
-
-@router.post("/link-guest-reviews", response_model=LinkGuestReviewsResponse)
-def link_guest_reviews(
-    payload: LinkGuestReviewsRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    linked_count = link_guest_reviews_to_user(
-        db=db,
-        user=current_user,
-        guest_tokens=payload.guest_tokens,
-    )
-    return LinkGuestReviewsResponse(linked_count=linked_count)
 
 
 @router.post("/password/check-email", response_model=PasswordEmailCheckResponse)

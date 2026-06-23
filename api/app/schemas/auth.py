@@ -6,14 +6,6 @@ class AuthTokenResponse(BaseModel):
     token_type: str = "Bearer"
 
 
-class LinkGuestReviewsRequest(BaseModel):
-    guest_tokens: list[str]
-
-
-class LinkGuestReviewsResponse(BaseModel):
-    linked_count: int
-
-
 class PasswordEmailCheckRequest(BaseModel):
     email: EmailStr
 
