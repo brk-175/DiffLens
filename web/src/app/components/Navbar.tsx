@@ -2,11 +2,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { clearAccessToken, getAccessToken } from "@/lib/auth/session";
 
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const onUploadPage = pathname === "/upload";
   const onSignInPage = pathname === "/signin";
@@ -17,6 +19,23 @@ export default function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    const syncAuthState = () => setIsAuthenticated(Boolean(getAccessToken()));
+    syncAuthState();
+    window.addEventListener("storage", syncAuthState);
+    return () => window.removeEventListener("storage", syncAuthState);
+  }, [pathname]);
+
+  const onAuthClick = () => {
+    if (isAuthenticated) {
+      clearAccessToken();
+      setIsAuthenticated(false);
+      router.push("/");
+      return;
+    }
+    router.push("/signin");
+  };
 
   return (
     <nav
@@ -45,13 +64,13 @@ export default function Navbar() {
       </div>
 
       <div className="flex items-center gap-4">
-        {!onSignInPage && (
+        {(isAuthenticated || !onSignInPage) && (
           <button
             type="button"
-            onClick={() => router.push("/signin")}
+            onClick={onAuthClick}
             className="text-sm font-medium hidden sm:block px-3 py-2 rounded-md transition-all duration-200 hover:bg-white/10 hover:text-[#C9D532] cursor-pointer"
           >
-            Sign In
+            {isAuthenticated ? "Sign Out" : "Sign In"}
           </button>
         )}
 
