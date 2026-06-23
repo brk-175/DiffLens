@@ -21,6 +21,7 @@ from app.services.google_oidc import (
 )
 from app.services.jwt import create_access_token
 from app.services.password import hash_password, verify_password
+from app.core.config import settings
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])

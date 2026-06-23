@@ -103,7 +103,7 @@ export default function UploadPage() {
 
       const data: CreateReviewResponse = await response.json();
 
-      if (!token && data.guest_token) {
+      if (data.guest_token) {
         saveGuestToken(data.review_id, data.guest_token);
       }
 
