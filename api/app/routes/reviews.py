@@ -20,6 +20,32 @@ from app.services.review_events import subscribe_review_events
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 logger = logging.getLogger(__name__)
 
+
+def _normalize_file_path(path: str | None) -> str:
+    normalized = (path or "").strip().replace("\\", "/")
+    if normalized.startswith("a/") or normalized.startswith("b/"):
+        normalized = normalized[2:]
+    return normalized
+
+
+def _find_blob_path_for_file(
+    file_path: str,
+    by_normalized_path: dict[str, str],
+) -> str | None:
+    normalized = _normalize_file_path(file_path)
+    direct = by_normalized_path.get(normalized)
+    if direct:
+        return direct
+
+    matches = [
+        blob
+        for path, blob in by_normalized_path.items()
+        if path.endswith(normalized) or normalized.endswith(path)
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
 def _assert_review_access(
     review: Review,
     current_user: User,
@@ -120,6 +146,30 @@ def get_review_result(
     payload = storage.download_json(review.output_blob_path)
     if payload is None:
         raise HTTPException(status_code=404, detail="Review result not found in storage")
+
+    analyzed_files = (
+        db.query(ReviewFile)
+        .filter(ReviewFile.review_id == review.id, ReviewFile.source_type == "analyzed")
+        .all()
+    )
+    file_code_blob_by_path = {
+        _normalize_file_path(row.file_path): row.file_code_blob_path
+        for row in analyzed_files
+        if row.file_code_blob_path
+    }
+
+    files_payload = payload.get("files") if isinstance(payload, dict) else None
+    if isinstance(files_payload, list) and file_code_blob_by_path:
+        for file_obj in files_payload:
+            if not isinstance(file_obj, dict):
+                continue
+
+            blob_path = _find_blob_path_for_file(file_obj.get("file_path", ""), file_code_blob_by_path)
+            if not blob_path:
+                continue
+
+            file_obj["file_code_blob_path"] = blob_path
+            file_obj["file_code"] = storage.download_text(blob_path)
 
     logger.info(f"result served review_id={review.id}")
     return payload

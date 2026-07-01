@@ -4,6 +4,12 @@ from app.db.session import SessionLocal
 from app.models.reviews import Review, ReviewFile, ReviewIssue, ReviewIssueDetails
 from app.services.storage import StorageService
 from app.services.ai import review_diff
+from app.services.diff_parser import (
+    find_best_file_match,
+    normalize_issue_line_number,
+    parse_unified_diff,
+    render_numbered_file_code,
+)
 from app.schemas.ai import DiffLensReviewOutput
 from app.schemas.reviews import ReviewStatus
 from typing import Any
@@ -41,7 +47,7 @@ def _upload_json_blob(storage: StorageService, object_path: str, payload: dict) 
     return storage.upload_json(object_path, payload)
 
 
-def _upload_text_blob(storage: StorageService, object_path: str, text: str) -> str:
+def _upload_text_blob(storage: StorageService, object_path: str, text: str) -> tuple[str, int, str]:
     """
     Supports either:
     - storage.upload_text(path, text) -> (path, size, hash)
@@ -79,6 +85,7 @@ def process_review(review_id: int) -> None:
         # 1) Read input diff from MinIO
         diff_text = _download_input_diff(storage, review.input_blob_path)
         selected_modes = _extract_selected_modes(review.mode_flags)
+        parsed_files, global_to_file_line = parse_unified_diff(diff_text)
 
         # 2) Call AI Service to review the diff and generate output
         logger.info(f"ai review started review_id={review_id}")
@@ -90,7 +97,42 @@ def process_review(review_id: int) -> None:
             raise ValueError(f"AI output validation failed for review with ID: {review_id}")
         logger.info(f"ai review validated review_id={review_id} files={len(validated.files)}")
 
-        # 4) Store full output JSON in MinIO
+        # 4) Normalize file paths + issue line numbers against parsed diff
+        for file_obj in validated.files:
+            matched_file = find_best_file_match(parsed_files, file_obj.file_path)
+            if matched_file:
+                file_obj.file_path = matched_file.file_path
+
+                for issue_obj in file_obj.issues:
+                    original_start = issue_obj.line_start
+                    original_end = issue_obj.line_end
+
+                    normalized_start = normalize_issue_line_number(
+                        original_start,
+                        matched_file.file_path,
+                        matched_file.line_numbers,
+                        global_to_file_line,
+                    )
+                    normalized_end = normalize_issue_line_number(
+                        original_end,
+                        matched_file.file_path,
+                        matched_file.line_numbers,
+                        global_to_file_line,
+                    )
+
+                    issue_obj.line_start = normalized_start
+
+                    if normalized_end is not None:
+                        issue_obj.line_end = normalized_end
+                    elif normalized_start is not None:
+                        issue_obj.line_end = normalized_start
+                    else:
+                        issue_obj.line_end = None
+
+                    if issue_obj.line_start is not None and issue_obj.line_end is not None and issue_obj.line_end < issue_obj.line_start:
+                        issue_obj.line_start, issue_obj.line_end = issue_obj.line_end, issue_obj.line_start
+
+        # 5) Store full output JSON in MinIO
         output_path = f"reviews/{review.id}/output/result.json"
         out_path, out_size, out_hash = _upload_json_blob(storage, output_path, validated.model_dump())
 
@@ -100,13 +142,14 @@ def process_review(review_id: int) -> None:
         logger.info(f"output uploaded review_id={review_id} output_path={out_path} size={out_size}")
 
         # Store result file in review_files table
-        ReviewFile (
+        result_file = ReviewFile(
             review_id=review.id,
             file_path=output_path,
             source_type="result",
         )
+        db.add(result_file)
 
-        # 5) Store lightweight summary in DB
+    # 6) Store lightweight summary in DB
         review.overall_verdict = validated.summary.overall_verdict
         review.risk_level = validated.summary.risk_level
         review.short_summary = validated.summary.short_summary
@@ -121,7 +164,7 @@ def process_review(review_id: int) -> None:
                 sev_counts[issue.severity] = sev_counts.get(issue.severity, 0) + 1
         review.severity_counts = sev_counts
 
-        # 6) Clear previous analysis rows (if re-run)
+    # 7) Clear previous analysis rows (if re-run)
         # Keep upload/paste rows intact; remove only source_type="analyzed"
         analysis_files = (
             db.query(ReviewFile)
@@ -132,7 +175,7 @@ def process_review(review_id: int) -> None:
             db.delete(rf)
         db.flush()
 
-        # 7) Persist normalized analysis output
+        # 8) Persist normalized analysis output
         for file_obj in validated.files:
             review_file = ReviewFile(
                 review_id=review.id,
@@ -142,6 +185,12 @@ def process_review(review_id: int) -> None:
             )
             db.add(review_file)
             db.flush()  # get review_file.id
+
+            matched_file = find_best_file_match(parsed_files, file_obj.file_path)
+            if matched_file and matched_file.numbered_lines:
+                fc_path = f"reviews/{review.id}/analyzed_review_files/{review_file.id}/file_code.txt"
+                file_code_blob_path, _, _ = _upload_text_blob(storage, fc_path, render_numbered_file_code(matched_file))
+                review_file.file_code_blob_path = file_code_blob_path
 
             for issue_obj in file_obj.issues:
                 review_issue = ReviewIssue(

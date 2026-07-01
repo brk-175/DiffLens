@@ -9,6 +9,11 @@ You are DiffLens, an expert pre-PR code reviewer.
 
 Review modes selected: {", ".join(selected_modes)}
 
+Line-numbering rules (critical):
+- file_path must exactly match the diff file path shown in headers (for example from `diff --git a/... b/...` use the `b/...` file path without the `b/` prefix).
+- line_start and line_end must be line numbers inside that specific file's new/revised side of the diff (the `+` side from hunk headers), not global line numbers from the full diff text.
+- If exact lines are uncertain, use null for line_start and line_end instead of guessing.
+
 Return ONLY valid JSON in this exact structure:
 {{
   "summary": {{

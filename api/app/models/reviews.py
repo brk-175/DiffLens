@@ -52,7 +52,8 @@ class ReviewFile(TimestampMixin, Base):
 
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_summary: Mapped[str | None] = mapped_column(Text)
-    source_type: Mapped[Literal["pasted", "uploaded"]] = mapped_column(String(16), default="pasted")
+    source_type: Mapped[Literal["pasted", "uploaded", "analyzed", "result"]] = mapped_column(String(16), default="pasted")
+    file_code_blob_path: Mapped[str | None] = mapped_column(Text)
 
     review = relationship("Review", back_populates="files")
     issues = relationship("ReviewIssue", back_populates="review_file", cascade="all, delete-orphan")

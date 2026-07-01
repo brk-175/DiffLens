@@ -5,7 +5,6 @@ import { getAccessToken } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Check, Copy } from "lucide-react";
 
 type ReviewStatus = "queued" | "processing" | "complete" | "failed";
@@ -39,6 +38,8 @@ type ReviewIssue = {
 type ReviewFile = {
   file_path: string;
   file_summary: string;
+  file_code_blob_path?: string | null;
+  file_code?: string | null;
   issues: ReviewIssue[];
 };
 
@@ -58,7 +59,7 @@ type ReviewResult = {
 type ViewerLine = {
   line: number;
   text: string;
-  issueIndex: number | null;
+  issueIndexes: number[];
 };
 
 const severityClass: Record<Severity, string> = {
@@ -155,7 +156,7 @@ const SEVERITY_FILTER_TONE: Record<"all" | Severity, { active: string; inactive:
   },
 };
 
-function buildViewerLines(file: ReviewFile | undefined): ViewerLine[] {
+function buildFallbackViewerLines(file: ReviewFile | undefined): ViewerLine[] {
   if (!file) return [];
 
   const lines: ViewerLine[] = [];
@@ -182,22 +183,76 @@ function buildViewerLines(file: ReviewFile | undefined): ViewerLine[] {
       lines.push({
         line: start + i,
         text,
-        issueIndex,
+        issueIndexes: [issueIndex],
       });
     });
 
     fallbackLine = Math.max(fallbackLine + 1, start + snippetLines.length + 2);
-    lines.push({ line: fallbackLine, text: "", issueIndex: null });
+    lines.push({ line: fallbackLine, text: "", issueIndexes: [] });
   });
 
   if (!lines.length) {
     return [
-      { line: 100, text: "No issues found for this file.", issueIndex: null },
-      { line: 101, text: "This file passed configured checks.", issueIndex: null },
+      { line: 100, text: "No issues found for this file.", issueIndexes: [] },
+      { line: 101, text: "This file passed configured checks.", issueIndexes: [] },
     ];
   }
 
   return lines;
+}
+
+function parseNumberedFileCode(fileCode: string | null | undefined): ViewerLine[] {
+  if (!fileCode?.trim()) return [];
+
+  return fileCode.split("\n").map((raw, idx) => {
+    const tabIndex = raw.indexOf("\t");
+    if (tabIndex > 0) {
+      const possibleLineNo = Number(raw.slice(0, tabIndex));
+      if (Number.isFinite(possibleLineNo)) {
+        return {
+          line: possibleLineNo,
+          text: raw.slice(tabIndex + 1),
+          issueIndexes: [],
+        };
+      }
+    }
+
+    return {
+      line: idx + 1,
+      text: raw,
+      issueIndexes: [],
+    };
+  });
+}
+
+function buildViewerLines(file: ReviewFile | undefined): ViewerLine[] {
+  if (!file) return [];
+
+  const parsedLines = parseNumberedFileCode(file.file_code);
+  if (!parsedLines.length) {
+    return buildFallbackViewerLines(file);
+  }
+
+  const issueIndexesByLine = new Map<number, number[]>();
+
+  file.issues.forEach((issue, issueIndex) => {
+    if (issue.line_start == null) return;
+    const start = issue.line_start;
+    const end = issue.line_end ?? issue.line_start;
+    const from = Math.min(start, end);
+    const to = Math.max(start, end);
+
+    for (let line = from; line <= to; line += 1) {
+      const current = issueIndexesByLine.get(line) ?? [];
+      current.push(issueIndex);
+      issueIndexesByLine.set(line, current);
+    }
+  });
+
+  return parsedLines.map((line) => ({
+    ...line,
+    issueIndexes: issueIndexesByLine.get(line.line) ?? [],
+  }));
 }
 
 function verdictDisplay(v: Verdict | null | undefined): string {
@@ -265,6 +320,7 @@ function CopyableCodeBlock({
 export default function ReviewDashboardPage() {
   const params = useParams<{ reviewId: string }>();
   const reviewId = Number(params.reviewId);
+  const invalidReviewId = !Number.isFinite(reviewId) || reviewId <= 0;
 
   const apiBase = useMemo(
     () => (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000").replace(/\/$/, ""),
@@ -283,8 +339,8 @@ export default function ReviewDashboardPage() {
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [activeSeverityFilter, setActiveSeverityFilter] = useState<Severity | "all">("all");
   const [copiedBlockKey, setCopiedBlockKey] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState(!invalidReviewId);
+  const [error, setError] = useState<string>(invalidReviewId ? "Invalid review ID." : "");
   const filesSidebarRef = useRef<HTMLElement | null>(null);
   const resultsSidebarRef = useRef<HTMLElement | null>(null);
   const resizeRafRef = useRef<number | null>(null);
@@ -376,9 +432,7 @@ export default function ReviewDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!Number.isFinite(reviewId) || reviewId <= 0) {
-      setError("Invalid review ID.");
-      setLoading(false);
+    if (invalidReviewId) {
       return;
     }
 
@@ -461,11 +515,11 @@ export default function ReviewDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [apiBase, reviewId]);
+  }, [apiBase, reviewId, invalidReviewId]);
 
   const files = resultData?.files ?? [];
   const selectedFile = files[selectedFileIndex];
-  const issues = selectedFile?.issues ?? [];
+  const issues = useMemo(() => selectedFile?.issues ?? [], [selectedFile]);
   const viewerLines = buildViewerLines(selectedFile);
 
   const severityCounts = useMemo(
@@ -490,11 +544,6 @@ export default function ReviewDashboardPage() {
     () => issues.filter((issue) => issue.severity === "critical").length,
     [issues]
   );
-
-  useEffect(() => {
-    setActiveSeverityFilter("all");
-    setExpandedIssueIndex(null);
-  }, [selectedFileIndex, issues.length]);
 
   const copyBlock = async (text: string, key: string) => {
     try {
@@ -700,6 +749,7 @@ export default function ReviewDashboardPage() {
                         type="button"
                         onClick={() => {
                           setSelectedFileIndex(idx);
+                          setActiveSeverityFilter("all");
                           setExpandedIssueIndex(null);
                         }}
                         className="w-full text-left rounded border border-[#474835] bg-[#121212] hover:border-[#bbcb2e]/70 hover:bg-[#161a0b] transition-colors p-3"
@@ -777,6 +827,7 @@ export default function ReviewDashboardPage() {
                   type="button"
                   onClick={() => {
                     setSelectedFileIndex(i);
+                    setActiveSeverityFilter("all");
                     setExpandedIssueIndex(null);
                   }}
                   title={file.file_path}
@@ -827,8 +878,8 @@ export default function ReviewDashboardPage() {
 
           <div className="flex-1 overflow-auto p-4 font-mono text-sm leading-6 text-[#e2e2e2]">
             {viewerLines.map((line, i) => {
-              const isHighlighted = line.issueIndex !== null;
-              const isActiveIssue = line.issueIndex !== null && line.issueIndex === expandedIssueIndex;
+              const isHighlighted = line.issueIndexes.length > 0;
+              const isActiveIssue = expandedIssueIndex !== null && line.issueIndexes.includes(expandedIssueIndex);
 
               return (
                 <div
