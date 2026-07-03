@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass, field
 
 
-HUNK_HEADER_RE = re.compile(r"^@@\s+-\d+(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@")
+HUNK_HEADER_RE = re.compile(r"^@@\s+-(\d+)(?:,\d+)?\s+\+(\d+)(?:,\d+)?\s+@@(.*)$")
 
 
 @dataclass
@@ -38,6 +38,7 @@ def parse_unified_diff(diff_text: str) -> tuple[dict[str, ParsedDiffFile], dict[
     current_file_path: str | None = None
     current_file: ParsedDiffFile | None = None
     in_hunk = False
+    old_line = 0
     new_line = 0
 
     lines = diff_text.splitlines()
@@ -63,35 +64,54 @@ def parse_unified_diff(diff_text: str) -> tuple[dict[str, ParsedDiffFile], dict[
         hunk_match = HUNK_HEADER_RE.match(line)
         if hunk_match:
             in_hunk = True
-            new_line = int(hunk_match.group(1))
+            old_line = int(hunk_match.group(1))
+            new_line = int(hunk_match.group(2))
+
+            # Keep trailing hunk context text (e.g. "public class Foo {") as the
+            # first visible line for this hunk, matching what users expect to see.
+            trailing_context = (hunk_match.group(3) or "").strip()
+            if trailing_context:
+                rendered_context = f" {trailing_context}"
+                current_file.numbered_lines.append((new_line, rendered_context))
+                current_file.line_numbers.add(new_line)
+                global_to_file_line[global_idx] = (current_file.file_path, new_line)
+                old_line += 1
+                new_line += 1
             continue
 
         if not in_hunk or not current_file_path or current_file is None:
             continue
 
         if line.startswith("+") and not line.startswith("+++"):
-            content = line[1:]
-            current_file.numbered_lines.append((new_line, content))
+            current_file.numbered_lines.append((new_line, line))
             current_file.line_numbers.add(new_line)
             global_to_file_line[global_idx] = (current_file.file_path, new_line)
             new_line += 1
             continue
 
         if line.startswith(" "):
-            content = line[1:]
-            current_file.numbered_lines.append((new_line, content))
+            current_file.numbered_lines.append((new_line, line))
             current_file.line_numbers.add(new_line)
             global_to_file_line[global_idx] = (current_file.file_path, new_line)
+            old_line += 1
             new_line += 1
             continue
 
         if line.startswith("-") and not line.startswith("---"):
+            current_file.numbered_lines.append((old_line, line))
+            old_line += 1
             continue
 
         if line.startswith("\\ No newline at end of file"):
             continue
 
-        in_hunk = False
+        # Non-standard line inside hunk: preserve it as a context-like line
+        # to avoid dropping first/edge lines in partially formatted diffs.
+        current_file.numbered_lines.append((new_line, line))
+        current_file.line_numbers.add(new_line)
+        global_to_file_line[global_idx] = (current_file.file_path, new_line)
+        old_line += 1
+        new_line += 1
 
     return files, global_to_file_line
 

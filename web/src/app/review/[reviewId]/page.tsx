@@ -59,6 +59,7 @@ type ReviewResult = {
 type ViewerLine = {
   line: number;
   text: string;
+  lineType: "added" | "removed" | "context" | "other";
   issueIndexes: number[];
 };
 
@@ -183,18 +184,19 @@ function buildFallbackViewerLines(file: ReviewFile | undefined): ViewerLine[] {
       lines.push({
         line: start + i,
         text,
+        lineType: "other",
         issueIndexes: [issueIndex],
       });
     });
 
     fallbackLine = Math.max(fallbackLine + 1, start + snippetLines.length + 2);
-    lines.push({ line: fallbackLine, text: "", issueIndexes: [] });
+    lines.push({ line: fallbackLine, text: "", lineType: "other", issueIndexes: [] });
   });
 
   if (!lines.length) {
     return [
-      { line: 100, text: "No issues found for this file.", issueIndexes: [] },
-      { line: 101, text: "This file passed configured checks.", issueIndexes: [] },
+      { line: 100, text: "No issues found for this file.", lineType: "other", issueIndexes: [] },
+      { line: 101, text: "This file passed configured checks.", lineType: "other", issueIndexes: [] },
     ];
   }
 
@@ -209,9 +211,20 @@ function parseNumberedFileCode(fileCode: string | null | undefined): ViewerLine[
     if (tabIndex > 0) {
       const possibleLineNo = Number(raw.slice(0, tabIndex));
       if (Number.isFinite(possibleLineNo)) {
+        const firstChar = raw[tabIndex + 1] ?? "";
+        const lineType =
+          firstChar === "+"
+            ? "added"
+            : firstChar === "-"
+              ? "removed"
+              : firstChar === " "
+                ? "context"
+                : "other";
+
         return {
           line: possibleLineNo,
           text: raw.slice(tabIndex + 1),
+          lineType,
           issueIndexes: [],
         };
       }
@@ -220,6 +233,7 @@ function parseNumberedFileCode(fileCode: string | null | undefined): ViewerLine[
     return {
       line: idx + 1,
       text: raw,
+      lineType: "other",
       issueIndexes: [],
     };
   });
@@ -880,13 +894,27 @@ export default function ReviewDashboardPage() {
             {viewerLines.map((line, i) => {
               const isHighlighted = line.issueIndexes.length > 0;
               const isActiveIssue = expandedIssueIndex !== null && line.issueIndexes.includes(expandedIssueIndex);
+              const diffRowTone =
+                line.lineType === "added"
+                  ? "bg-[#1DCD9F]/12"
+                  : line.lineType === "removed"
+                    ? "bg-[#ff4d6d]/12"
+                    : "";
+              const diffTextTone =
+                line.lineType === "added"
+                  ? "text-[#bdf7e8]"
+                  : line.lineType === "removed"
+                    ? "text-[#ffc5d1]"
+                    : isHighlighted
+                      ? "text-[#f5f5f5]"
+                      : "";
 
               return (
                 <div
                   key={`${line.line}-${i}`}
                   className={`grid grid-cols-[48px_1fr] group ${
                     isHighlighted ? "issue-highlight relative" : ""
-                  } ${isActiveIssue ? "ring-1 ring-[#ff4d6d]/40" : ""}`}
+                  } ${diffRowTone} ${isActiveIssue ? "ring-1 ring-[#ff4d6d]/40" : ""}`}
                 >
                   <div
                     className={`text-right pr-4 select-none ${
@@ -896,7 +924,7 @@ export default function ReviewDashboardPage() {
                     {line.line}
                   </div>
 
-                  <div className={`pl-4 whitespace-pre-wrap wrap-break-word ${isHighlighted ? "text-[#f5f5f5]" : ""}`}>
+                  <div className={`pl-4 whitespace-pre-wrap wrap-break-word ${diffTextTone}`}>
                     {line.text}
                     {isHighlighted && isActiveIssue && (
                       <span className="ml-3 inline-flex px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border border-[#ff2f57] text-[#ff2f57] align-middle cursor-default select-none">
