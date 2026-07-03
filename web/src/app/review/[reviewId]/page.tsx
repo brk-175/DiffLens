@@ -349,7 +349,7 @@ export default function ReviewDashboardPage() {
   const [isFilesSidebarCollapsed, setIsFilesSidebarCollapsed] = useState(false);
   const [isResultsSidebarCollapsed, setIsResultsSidebarCollapsed] = useState(false);
   const [filesSidebarWidth, setFilesSidebarWidth] = useState(256);
-  const [resultsSidebarWidth, setResultsSidebarWidth] = useState(384);
+  const [resultsSidebarWidth, setResultsSidebarWidth] = useState(350);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [activeSeverityFilter, setActiveSeverityFilter] = useState<Severity | "all">("all");
   const [copiedBlockKey, setCopiedBlockKey] = useState<string | null>(null);
@@ -649,10 +649,10 @@ export default function ReviewDashboardPage() {
   };
 
   return (
-    <div className="bg-[#000000] text-[#e2e2e2] min-h-screen flex flex-col overflow-x-hidden overflow-y-auto relative pt-18">
+  <div className="bg-[#000000] text-[#e2e2e2] h-screen flex flex-col overflow-hidden relative pt-18">
       <canvas id="review-canvas-bg" className="absolute inset-0 w-full h-full -z-10 opacity-30 pointer-events-none" />
 
-      <header className="bg-[#000000]/90 backdrop-blur-md px-6 py-5 flex flex-col gap-4 z-10">
+      <header className="bg-[#000000]/90 backdrop-blur-md px-3 py-3 flex flex-col gap-3 z-10">
         <div className="flex justify-between items-start gap-4">
           <div className="flex flex-col gap-2 max-w-4xl">
             <div className="inline-flex items-center gap-3 rounded-lg bg-[#0c1106]/90 px-3 py-2 shadow-[0_0_16px_rgba(187,203,46,0.08)]">
@@ -756,7 +756,7 @@ export default function ReviewDashboardPage() {
               {resultData?.files?.length ? (
                 <div className="space-y-2">
                   <p className="text-[11px] uppercase tracking-widest text-[#c8c8af]">File-level Summary</p>
-                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  <div className="diff-summary-scroll space-y-2 max-h-40 overflow-y-auto pr-1">
                     {resultData.files.map((file, idx) => (
                       <button
                         key={`${file.file_path}-${idx}`}
@@ -806,10 +806,10 @@ export default function ReviewDashboardPage() {
         </div>
       </header>
 
-      <div className="flex-1 flex z-10 min-h-130 px-6 pb-5">
+      <div className="flex-1 flex min-h-0 overflow-hidden z-10 px-3 pb-3">
         <aside
           ref={filesSidebarRef}
-          className={`relative border border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left rounded-l-lg overflow-hidden ${
+          className={`relative min-h-0 border border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col animate-slide-left rounded-l-lg overflow-hidden ${
             isSidebarResizing ? "" : "transition-all duration-300"
           }`}
           style={{ width: isFilesSidebarCollapsed ? 64 : filesSidebarWidth }}
@@ -831,7 +831,7 @@ export default function ReviewDashboardPage() {
             </button>
           </div>
 
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2">
+          <nav className="files-reviewed-scroll flex-1 overflow-y-auto overflow-x-hidden py-2">
             {files.map((file, i) => {
               const fileIssues = file.issues.length;
               const active = i === selectedFileIndex;
@@ -882,7 +882,7 @@ export default function ReviewDashboardPage() {
           )}
         </aside>
 
-        <main className="flex-1 bg-[#000000]/80 border-y border-r border-[#474835] flex flex-col overflow-hidden relative animate-fade-scale">
+  <main className="flex-1 min-h-0 bg-[#000000]/80 border-y border-r border-[#474835] flex flex-col overflow-hidden relative animate-fade-scale">
           <div className="h-10 border-b border-[#474835] flex items-center px-4 gap-4 bg-[#0e0e0e] shrink-0 z-10 relative">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-base">description</span>
@@ -890,7 +890,7 @@ export default function ReviewDashboardPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-auto p-4 font-mono text-sm leading-6 text-[#e2e2e2]">
+          <div className="file-code-scroll flex-1 overflow-auto p-4 font-mono text-sm leading-6 text-[#e2e2e2]">
             {viewerLines.map((line, i) => {
               const isHighlighted = line.issueIndexes.length > 0;
               const isActiveIssue = expandedIssueIndex !== null && line.issueIndexes.includes(expandedIssueIndex);
@@ -940,7 +940,7 @@ export default function ReviewDashboardPage() {
 
         <aside
           ref={resultsSidebarRef}
-          className={`relative border-y border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col z-10 animate-slide-right rounded-r-lg overflow-hidden ${
+          className={`relative min-h-0 border-y border-r border-[#474835] bg-[#000000]/90 backdrop-blur-md flex flex-col z-10 animate-slide-right rounded-r-lg overflow-hidden ${
             isSidebarResizing ? "" : "transition-all duration-300"
           }`}
           style={{ width: isResultsSidebarCollapsed ? 64 : resultsSidebarWidth }}
@@ -1004,7 +1004,7 @@ export default function ReviewDashboardPage() {
                 })}
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+              <div className="analysis-results-scroll flex-1 overflow-y-auto p-3 space-y-3">
                 {filteredIssues.map(({ issue, index: issueIndex }) => {
                   const expanded = issueIndex === expandedIssueIndex;
                   const whyBlocks = [
@@ -1113,11 +1113,11 @@ export default function ReviewDashboardPage() {
                               ))}
                             </div>
 
-                            {issue.suggested_fix && (
+                            {issue.why_this_matters.code_example && (
                               <CopyableCodeBlock
-                                title="Suggested Fix"
-                                content={issue.suggested_fix}
-                                copyKey={`${issueIndex}-suggested-fix`}
+                                title="Code Example"
+                                content={issue.why_this_matters.code_example}
+                                copyKey={`${issueIndex}-code-example`}
                                 copiedKey={copiedBlockKey}
                                 onCopy={copyBlock}
                                 accent
@@ -1197,6 +1197,39 @@ export default function ReviewDashboardPage() {
           border-radius: 999px;
         }
         .issue-details-scroll::-webkit-scrollbar-thumb:hover {
+          background: #606878;
+        }
+        .diff-summary-scroll,
+        .files-reviewed-scroll,
+        .file-code-scroll,
+        .analysis-results-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #4d5360 transparent;
+        }
+        .diff-summary-scroll::-webkit-scrollbar,
+        .files-reviewed-scroll::-webkit-scrollbar,
+        .file-code-scroll::-webkit-scrollbar,
+        .analysis-results-scroll::-webkit-scrollbar {
+          width: 5px;
+          height: 5px;
+        }
+        .diff-summary-scroll::-webkit-scrollbar-track,
+        .files-reviewed-scroll::-webkit-scrollbar-track,
+        .file-code-scroll::-webkit-scrollbar-track,
+        .analysis-results-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .diff-summary-scroll::-webkit-scrollbar-thumb,
+        .files-reviewed-scroll::-webkit-scrollbar-thumb,
+        .file-code-scroll::-webkit-scrollbar-thumb,
+        .analysis-results-scroll::-webkit-scrollbar-thumb {
+          background: #4d5360;
+          border-radius: 999px;
+        }
+        .diff-summary-scroll::-webkit-scrollbar-thumb:hover,
+        .files-reviewed-scroll::-webkit-scrollbar-thumb:hover,
+        .file-code-scroll::-webkit-scrollbar-thumb:hover,
+        .analysis-results-scroll::-webkit-scrollbar-thumb:hover {
           background: #606878;
         }
         .issue-highlight {
