@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setAccessToken } from "@/lib/auth/session";
 
 
-export default function SignInCallbackPage() {
+function SignInCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -38,5 +38,21 @@ export default function SignInCallbackPage() {
         <p className="text-lg">{message}</p>
       </div>
     </main>
+  );
+}
+
+export default function SignInCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-black text-white pt-24 px-6 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg">Completing sign in...</p>
+          </div>
+        </main>
+      }
+    >
+      <SignInCallbackContent />
+    </Suspense>
   );
 }
