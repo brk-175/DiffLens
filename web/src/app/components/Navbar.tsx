@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+
 import { usePathname, useRouter } from "next/navigation";
 import { clearAccessToken, getAccessToken } from "@/lib/auth/session";
 
@@ -53,14 +53,13 @@ export default function Navbar() {
           DiffLens
         </button>
 
+        {/* Documentation tab commented out for future use
         <div className="hidden md:flex gap-6">
-          <Link className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-            Reviewer
-          </Link>
           <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
             Documentation
           </a>
         </div>
+        */}
       </div>
 
       <div className="flex items-center gap-4">
