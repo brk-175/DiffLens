@@ -1,49 +1,36 @@
 "use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { clearAccessToken, getAccessToken } from "@/lib/auth/session";
 
-export default function Navbar() {
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+interface NavbarProps {
+  isAuthenticated?: boolean;
+  onAuthClick?: () => void;
+}
+
+export default function Navbar({
+  isAuthenticated = false,
+  onAuthClick,
+}: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const onUploadPage = pathname === "/upload";
   const onSignInPage = pathname === "/signin";
+  const onUploadPage = pathname === "/upload";
+  const handleAuthClick = onAuthClick ?? (() => router.push("/signin"));
 
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 20);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const syncAuthState = () => setIsAuthenticated(Boolean(getAccessToken()));
-    syncAuthState();
-    window.addEventListener("storage", syncAuthState);
-    return () => window.removeEventListener("storage", syncAuthState);
-  }, [pathname]);
-
-  const onAuthClick = () => {
-    if (isAuthenticated) {
-      clearAccessToken();
-      setIsAuthenticated(false);
-      router.push("/");
-      return;
-    }
-    router.push("/signin");
-  };
-
   return (
-    <nav
-      id="navbar"
-      className={`fixed top-0 w-full z-50 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500 border-b border-transparent bg-transparent ${
+    <nav className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 transition-all duration-300 border-b border-transparent bg-transparent ${
         isScrolled ? "scrolled" : ""
-      }`}
-    >
+      }`}>
       <div className="flex items-center gap-12">
         <button
           type="button"
@@ -54,12 +41,9 @@ export default function Navbar() {
         </button>
 
         <div className="hidden md:flex gap-6">
-          <Link className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-            Reviewer
-          </Link>
-          <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
+          {/* <a href="#" className="text-sm font-medium hover:text-[#bbcb2e] transition-colors">
             Documentation
-          </a>
+          </a> */}
         </div>
       </div>
 
@@ -67,7 +51,7 @@ export default function Navbar() {
         {(isAuthenticated || !onSignInPage) && (
           <button
             type="button"
-            onClick={onAuthClick}
+            onClick={handleAuthClick}
             className="text-sm font-medium hidden sm:block px-3 py-2 rounded-md transition-all duration-200 hover:bg-white/10 hover:text-[#C9D532] cursor-pointer"
           >
             {isAuthenticated ? "Sign Out" : "Sign In"}
@@ -78,9 +62,9 @@ export default function Navbar() {
           type="button"
           onClick={() => router.push("/upload")}
           disabled={onUploadPage}
-          className="px-4 py-2 bg-white text-black font-semibold text-sm rounded btn-glow-hover hover:bg-[#bbcb2e] transition-all active:scale-95 cursor-pointer disabled:opacity-80 disabled:cursor-default disabled:bg-gray-500"
+          className="px-4 py-2 bg-white text-black font-semibold text-sm rounded btn-glow-hover hover:bg-[#bbcb2e] transition-all active:scale-95 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
         >
-          {onUploadPage ? "Reviewer" : "Start Reviewing"}
+          Upload
         </button>
       </div>
     </nav>
