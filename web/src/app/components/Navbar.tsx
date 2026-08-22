@@ -1,46 +1,27 @@
-"use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { clearAccessToken, getAccessToken } from "@/lib/auth/session";
 
-export default function Navbar() {
-  const router = useRouter();
-  const pathname = usePathname();
+interface NavbarProps {
+  isAuthenticated: boolean;
+  onSignInPage: boolean;
+  onAuthClick: () => void;
+  onUploadPage: boolean;
+}
+
+export function Navbar({ isAuthenticated, onSignInPage, onAuthClick, onUploadPage }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  const onUploadPage = pathname === "/upload";
-  const onSignInPage = pathname === "/signin";
+  const router = useRouter();
 
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 20);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const handleScroll = () => setIsScrolled(window.scrollY > 0);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const syncAuthState = () => setIsAuthenticated(Boolean(getAccessToken()));
-    syncAuthState();
-    window.addEventListener("storage", syncAuthState);
-    return () => window.removeEventListener("storage", syncAuthState);
-  }, [pathname]);
-
-  const onAuthClick = () => {
-    if (isAuthenticated) {
-      clearAccessToken();
-      setIsAuthenticated(false);
-      router.push("/");
-      return;
-    }
-    router.push("/signin");
-  };
-
   return (
-    <nav
-      id="navbar"
-      className={`fixed top-0 w-full z-50 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500 border-b border-transparent bg-transparent ${
+    <header
+      className={`ween px-6 md:px-12 transition-all duration-500 border-b border-transparent bg-transparent ${
         isScrolled ? "scrolled" : ""
       }`}
     >
@@ -54,12 +35,12 @@ export default function Navbar() {
         </button>
 
         <div className="hidden md:flex gap-6">
-          <Link className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
+          {/* <Link className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
             Reviewer
-          </Link>
-          <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
+          </Link> */}
+          {/* <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
             Documentation
-          </a>
+          </a> */}
         </div>
       </div>
 
@@ -78,11 +59,11 @@ export default function Navbar() {
           type="button"
           onClick={() => router.push("/upload")}
           disabled={onUploadPage}
-          className="px-4 py-2 bg-white text-black font-semibold text-sm rounded btn-glow-hover hover:bg-[#bbcb2e] transition-all active:scale-95 cursor-pointer disabled:opacity-80 disabled:cursor-default disabled:bg-gray-500"
+          className="px-4 py-2 bg-white text-black font-semibold text-sm rounded btn-glow-hover hover:bg-[#bbcb2e] transition-all active:scale-95 cursor-pointer disabled:opacity-8"
         >
-          {onUploadPage ? "Reviewer" : "Start Reviewing"}
+          Upload
         </button>
       </div>
-    </nav>
+    </header>
   );
 }
