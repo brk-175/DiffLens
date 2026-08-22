@@ -1,7 +1,7 @@
 [project]
 name = "difflens-api"
 version = "1.0.0"
-description = "AI-powered pre-PR code review backend for diff and patch analysis"
+description = "AI-powered pre-PR code review backend for diff analysis"
 authors = [
     {name = "BRK"}
 ]
