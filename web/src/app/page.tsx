@@ -295,7 +295,7 @@ export default function HomePage() {
               </div>
               <h3 className="text-2xl font-semibold">Upload / Paste</h3>
               <p className="text-white/60 leading-relaxed">
-                Paste or upload a git diff / patch file. DiffLens begins AI analysis and uncovers bugs, risks, and code quality issues instantly.
+                Paste or upload a git diff file. DiffLens begins AI analysis and uncovers bugs, risks, and code quality issues instantly.
               </p>
             </div>
 
@@ -496,7 +496,7 @@ export default function HomePage() {
                 </button>
               </div>
               <p className="mt-6 text-white/40 text-sm font-medium">
-                Paste / upload a diff / patch file. Get actionable insights in seconds.
+                Paste / upload a diff file. Get actionable insights in seconds.
               </p>
             </div>
           </div>
