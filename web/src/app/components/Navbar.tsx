@@ -54,12 +54,11 @@ export default function Navbar() {
         </button>
 
         <div className="hidden md:flex gap-6">
-          <Link className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
-            Reviewer
-          </Link>
+          {/*
           <a className="text-sm font-medium hover:text-[#bbcb2e] transition-colors" href="#">
             Documentation
           </a>
+          */}
         </div>
       </div>
 
