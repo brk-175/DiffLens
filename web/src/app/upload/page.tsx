@@ -144,7 +144,7 @@ export default function UploadPage() {
               Initiate Code Intelligence.
             </h1>
             <p className="text-[16px] leading-[1.6] tracking-[-0.01em] text-[#dddddd] animate-fade-in-up delay-200">
-              Upload or Paste <span className="text-[#bbcb2e]">.diff</span> or <span className="text-[#bbcb2e]">.patch</span> file to begin an AI-augmented high-fidelity review. Select a focus mode to tailor the analysis.
+              Upload or Paste <span className="text-[#bbcb2e]">.diff</span> file to begin an AI-augmented high-fidelity review. Select a focus mode to tailor the analysis.
             </p>
           </div>
 
@@ -194,7 +194,7 @@ export default function UploadPage() {
               <div className="flex flex-col gap-3">
                 <div className="flex justify-between items-center px-1">
                   <label className="text-[12px] leading-[12px] tracking-[0.05em] font-bold text-[#bbcb2e]/80">
-                    OR PASTE RAW DIFF / PATCH
+                    OR PASTE RAW DIFF
                   </label>
                 </div>
 
@@ -213,7 +213,7 @@ export default function UploadPage() {
 
                 <div className="flex justify-between items-center px-1">
                   <p className="text-[14px] leading-[1.5] text-[#dddddd]/50">
-                    Supports .diff and .patch
+                    Supports .diff
                   </p>
                 </div>
 
