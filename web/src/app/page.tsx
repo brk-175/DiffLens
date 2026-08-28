@@ -327,7 +327,7 @@ export default function HomePage() {
               <div className="lg:col-span-5 md:sticky md:top-32">
                 <h2 className="text-4xl md:text-5xl font-bold leading-tight mb-4 reveal">
                   Deep semantic <br />
-                  understanding.
+                  understanding
                 </h2>
                 <p className="text-white/50 text-lg mb-6 reveal">
                   DiffLens understands how your changes affect the surrounding codebase, surfacing issues that span files, modules, and execution paths before they reach production.
